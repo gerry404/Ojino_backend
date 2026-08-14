@@ -16,3 +16,6 @@ build/
 # Systeme
 .DS_Store
 Thumbs.db
+
+# Fichiers deposes en developpement : jamais commites.
+data/
