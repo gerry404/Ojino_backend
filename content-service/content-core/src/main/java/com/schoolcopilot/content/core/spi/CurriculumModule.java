@@ -30,4 +30,16 @@ public interface CurriculumModule {
      * filiere ni de matiere mais de parcours et d'unites d'enseignement.
      */
     List<CurriculumStep> steps();
+
+    /** Ce a quoi les chapitres de ce cycle se rattachent. */
+    AnchorKind anchorKind();
+
+    /**
+     * Vrai si ce code d'ancrage existe et peut encore servir dans ce systeme.
+     *
+     * <p>Le coeur s'en sert pour refuser un chapitre rattache a une matiere ou a
+     * une unite d'enseignement qui n'existe pas. Il ne sait pas comment verifier :
+     * seul le module du cycle connait le referentiel concerne.
+     */
+    boolean anchorExists(String systemCode, String anchorCode);
 }

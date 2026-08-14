@@ -41,6 +41,20 @@ public class ApiException extends RuntimeException {
                 "Filiere inconnue dans ce systeme : " + code);
     }
 
+    public static ApiException unknownChapter(String code) {
+        return new ApiException(HttpStatus.NOT_FOUND, "unknown_chapter",
+                "Chapitre inconnu dans ce systeme : " + code);
+    }
+
+    /**
+     * Le code d'ancrage n'existe pas pour ce cycle. C'est le module du cycle qui
+     * a repondu : le coeur ne sait pas ce qu'est une matiere ou une UE.
+     */
+    public static ApiException unknownAnchor(String kind, String code) {
+        return new ApiException(HttpStatus.BAD_REQUEST, "unknown_anchor",
+                "Aucun element de type " + kind + " ne porte le code " + code + " dans ce systeme.");
+    }
+
     public static ApiException unknownProgram(String code) {
         return new ApiException(HttpStatus.NOT_FOUND, "unknown_program",
                 "Parcours inconnu dans ce systeme : " + code);

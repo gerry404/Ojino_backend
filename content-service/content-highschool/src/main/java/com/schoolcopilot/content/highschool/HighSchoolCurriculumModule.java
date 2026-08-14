@@ -5,7 +5,8 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 import com.schoolcopilot.content.core.domain.EducationCycle;
-import com.schoolcopilot.content.core.spi.CurriculumModule;
+import com.schoolcopilot.content.core.repository.ReferenceRepositories;
+import com.schoolcopilot.content.core.spi.SubjectAnchoredModule;
 import com.schoolcopilot.content.core.spi.CurriculumStep;
 
 /**
@@ -20,7 +21,11 @@ import com.schoolcopilot.content.core.spi.CurriculumStep;
  * les epreuves.
  */
 @Component
-public class HighSchoolCurriculumModule implements CurriculumModule {
+public class HighSchoolCurriculumModule extends SubjectAnchoredModule {
+
+    public HighSchoolCurriculumModule(ReferenceRepositories.Subjects subjects) {
+        super(subjects);
+    }
 
     @Override
     public EducationCycle cycle() {

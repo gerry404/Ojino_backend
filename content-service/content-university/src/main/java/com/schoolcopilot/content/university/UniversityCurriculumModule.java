@@ -5,8 +5,10 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 import com.schoolcopilot.content.core.domain.EducationCycle;
+import com.schoolcopilot.content.core.spi.AnchorKind;
 import com.schoolcopilot.content.core.spi.CurriculumModule;
 import com.schoolcopilot.content.core.spi.CurriculumStep;
+import com.schoolcopilot.content.university.repository.UniversityRepositories;
 
 /**
  * Enseignement superieur.
@@ -18,6 +20,25 @@ import com.schoolcopilot.content.core.spi.CurriculumStep;
  */
 @Component
 public class UniversityCurriculumModule implements CurriculumModule {
+
+    private final UniversityRepositories.CourseUnits courseUnits;
+
+    public UniversityCurriculumModule(UniversityRepositories.CourseUnits courseUnits) {
+        this.courseUnits = courseUnits;
+    }
+
+    /** Ici un chapitre se rattache a une unite d'enseignement. */
+    @Override
+    public AnchorKind anchorKind() {
+        return AnchorKind.COURSE_UNIT;
+    }
+
+    @Override
+    public boolean anchorExists(String systemCode, String anchorCode) {
+        return courseUnits.findBySystemCodeAndCode(systemCode, anchorCode)
+                .filter(unit -> !unit.archived())
+                .isPresent();
+    }
 
     @Override
     public EducationCycle cycle() {

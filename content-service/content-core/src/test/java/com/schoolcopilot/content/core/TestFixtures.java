@@ -7,6 +7,7 @@ import com.schoolcopilot.content.core.domain.EducationLevel;
 import com.schoolcopilot.content.core.domain.EducationSystem;
 import com.schoolcopilot.content.core.domain.Subject;
 import com.schoolcopilot.content.core.domain.Track;
+import com.schoolcopilot.content.core.spi.AnchorKind;
 import com.schoolcopilot.content.core.spi.CurriculumModule;
 import com.schoolcopilot.content.core.spi.CurriculumModules;
 import com.schoolcopilot.content.core.spi.CurriculumStep;
@@ -89,6 +90,24 @@ public final class TestFixtures {
             @Override
             public List<CurriculumStep> steps() {
                 return steps;
+            }
+
+            @Override
+            public AnchorKind anchorKind() {
+                return steps.contains(CurriculumStep.LEARNING_DOMAINS)
+                        ? AnchorKind.LEARNING_DOMAIN
+                        : AnchorKind.SUBJECT;
+            }
+
+            /** Les codes du referentiel reduit, plus un domaine pour la maternelle. */
+            @Override
+            public boolean anchorExists(String systemCode, String anchorCode) {
+                if (anchorKind() == AnchorKind.LEARNING_DOMAIN) {
+                    return List.of("LANGAGE", "PENSEE").contains(anchorCode);
+                }
+                return subjects().stream()
+                        .filter(subject -> !subject.archived())
+                        .anyMatch(subject -> subject.code().equals(anchorCode));
             }
         };
     }

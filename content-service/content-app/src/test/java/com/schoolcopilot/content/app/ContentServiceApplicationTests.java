@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.schoolcopilot.content.core.domain.EducationCycle;
+import com.schoolcopilot.content.core.repository.CurriculumRepositories;
 import com.schoolcopilot.content.core.repository.ReferenceRepositories;
 import com.schoolcopilot.content.core.spi.CurriculumModules;
 import com.schoolcopilot.content.core.web.client.ReferenceController;
@@ -46,6 +47,9 @@ class ContentServiceApplicationTests {
 
     @MockitoBean
     ReferenceRepositories.Subjects subjects;
+
+    @MockitoBean
+    CurriculumRepositories.Chapters chapters;
 
     @MockitoBean
     LearningDomainRepository learningDomains;

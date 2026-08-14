@@ -28,5 +28,7 @@ public final class UniversityRepositories {
 
         List<CourseUnit> findBySystemCodeAndProgramCodeOrderBySemesterAscCodeAsc(
                 String systemCode, String programCode);
+
+        Optional<CourseUnit> findBySystemCodeAndCode(String systemCode, String code);
     }
 }

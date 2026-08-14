@@ -5,8 +5,10 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 import com.schoolcopilot.content.core.domain.EducationCycle;
+import com.schoolcopilot.content.core.spi.AnchorKind;
 import com.schoolcopilot.content.core.spi.CurriculumModule;
 import com.schoolcopilot.content.core.spi.CurriculumStep;
+import com.schoolcopilot.content.earlyyears.repository.LearningDomainRepository;
 
 /**
  * Maternelle jusqu'au CP.
@@ -20,6 +22,25 @@ import com.schoolcopilot.content.core.spi.CurriculumStep;
  */
 @Component
 public class EarlyYearsCurriculumModule implements CurriculumModule {
+
+    private final LearningDomainRepository domains;
+
+    public EarlyYearsCurriculumModule(LearningDomainRepository domains) {
+        this.domains = domains;
+    }
+
+    /** Ici un chapitre se rattache a un domaine, jamais a une matiere. */
+    @Override
+    public AnchorKind anchorKind() {
+        return AnchorKind.LEARNING_DOMAIN;
+    }
+
+    @Override
+    public boolean anchorExists(String systemCode, String anchorCode) {
+        return domains.findBySystemCodeAndCode(systemCode, anchorCode)
+                .filter(domain -> !domain.archived())
+                .isPresent();
+    }
 
     @Override
     public EducationCycle cycle() {

@@ -5,7 +5,8 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 import com.schoolcopilot.content.core.domain.EducationCycle;
-import com.schoolcopilot.content.core.spi.CurriculumModule;
+import com.schoolcopilot.content.core.repository.ReferenceRepositories;
+import com.schoolcopilot.content.core.spi.SubjectAnchoredModule;
 import com.schoolcopilot.content.core.spi.CurriculumStep;
 
 /**
@@ -22,7 +23,11 @@ import com.schoolcopilot.content.core.spi.CurriculumStep;
  * le BEPC et le brevet, les competences de fin de cycle.
  */
 @Component
-public class CollegeCurriculumModule implements CurriculumModule {
+public class CollegeCurriculumModule extends SubjectAnchoredModule {
+
+    public CollegeCurriculumModule(ReferenceRepositories.Subjects subjects) {
+        super(subjects);
+    }
 
     @Override
     public EducationCycle cycle() {
