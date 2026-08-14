@@ -16,6 +16,9 @@ public final class Role {
     /** Acces au back-office, sous {@code /api/v1/admin}. */
     public static final String ADMIN = "ADMIN";
 
+    /** Les seuls roles acceptes. Sert a rejeter les valeurs inventees. */
+    public static final java.util.Set<String> KNOWN = java.util.Set.of(USER, ADMIN);
+
     private Role() {
     }
 }

@@ -81,6 +81,21 @@ public class AuthException extends RuntimeException {
                 "Trop de tentatives. Demandez un nouveau code.");
     }
 
+    public static AuthException unknownRole(Object roles) {
+        return new AuthException(HttpStatus.BAD_REQUEST, "unknown_role",
+                "Roles inconnus : " + roles);
+    }
+
+    /**
+     * Un administrateur ne peut ni se desactiver ni se retirer son propre role :
+     * une equipe qui se verrouille hors de son back-office n'a aucun moyen de
+     * revenir sans intervention en base.
+     */
+    public static AuthException cannotActOnSelf(String action) {
+        return new AuthException(HttpStatus.CONFLICT, "cannot_act_on_self",
+                "Vous ne pouvez pas " + action + " votre propre compte.");
+    }
+
     public static AuthException userNotFound() {
         return new AuthException(HttpStatus.NOT_FOUND, "user_not_found",
                 "Compte introuvable.");
