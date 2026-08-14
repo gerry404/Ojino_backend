@@ -1,4 +1,4 @@
-package com.schoolcopilot.user_service.web;
+package com.schoolcopilot.user_service.web.client;
 
 import java.util.List;
 
@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.schoolcopilot.user_service.service.reference.ReferenceService;
-import com.schoolcopilot.user_service.web.dto.EducationLevelView;
-import com.schoolcopilot.user_service.web.dto.EducationSystemView;
-import com.schoolcopilot.user_service.web.dto.SubjectView;
-import com.schoolcopilot.user_service.web.dto.TrackView;
+import com.schoolcopilot.user_service.web.client.dto.EducationLevelView;
+import com.schoolcopilot.user_service.web.client.dto.EducationSystemView;
+import com.schoolcopilot.user_service.web.client.dto.SubjectView;
+import com.schoolcopilot.user_service.web.client.dto.TrackView;
 
 /**
  * Le referentiel scolaire.

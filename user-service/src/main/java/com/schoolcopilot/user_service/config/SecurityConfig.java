@@ -9,6 +9,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
@@ -24,6 +25,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.schoolcopilot.user_service.domain.Role;
+
 /**
  * Le service est un simple resource server : il valide les access tokens emis par
  * l'auth-service grace au secret partage, sans jamais l'appeler. Une requete de
@@ -31,6 +34,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -62,8 +66,12 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Le referentiel scolaire est public : les ecrans d'inscription en
-                        // ont besoin avant meme que le profil existe.
+                        // Declare en premier : le back-office reste ferme meme si une
+                        // route admin oublie son annotation, et aucune regle plus
+                        // permissive ne peut le devancer.
+                        .requestMatchers("/api/v1/admin/**").hasRole(Role.ADMIN)
+                        // Le referentiel scolaire est public en lecture : les ecrans
+                        // d'inscription en ont besoin avant meme que le profil existe.
                         .requestMatchers("/api/v1/reference/**").permitAll()
                         .requestMatchers("/actuator/health/**").permitAll()
                         .anyRequest().authenticated())

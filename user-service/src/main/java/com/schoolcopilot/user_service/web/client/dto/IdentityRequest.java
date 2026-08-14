@@ -1,4 +1,4 @@
-package com.schoolcopilot.user_service.web.dto;
+package com.schoolcopilot.user_service.web.client.dto;
 
 import java.time.LocalDate;
 

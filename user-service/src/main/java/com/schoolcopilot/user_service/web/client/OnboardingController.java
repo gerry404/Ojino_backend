@@ -1,4 +1,4 @@
-package com.schoolcopilot.user_service.web;
+package com.schoolcopilot.user_service.web.client;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -12,16 +12,16 @@ import org.springframework.web.bind.annotation.RestController;
 import com.schoolcopilot.user_service.domain.profile.StudentProfile;
 import com.schoolcopilot.user_service.service.profile.OnboardingService;
 import com.schoolcopilot.user_service.service.profile.ProfileService;
-import com.schoolcopilot.user_service.web.dto.AvailabilityRequest;
-import com.schoolcopilot.user_service.web.dto.DifficultiesRequest;
-import com.schoolcopilot.user_service.web.dto.GoalRequest;
-import com.schoolcopilot.user_service.web.dto.IdentityRequest;
-import com.schoolcopilot.user_service.web.dto.LevelRequest;
-import com.schoolcopilot.user_service.web.dto.OnboardingStateResponse;
-import com.schoolcopilot.user_service.web.dto.PhotoRequest;
-import com.schoolcopilot.user_service.web.dto.ProfileResponse;
-import com.schoolcopilot.user_service.web.dto.SubjectsRequest;
-import com.schoolcopilot.user_service.web.dto.TrackRequest;
+import com.schoolcopilot.user_service.web.client.dto.AvailabilityRequest;
+import com.schoolcopilot.user_service.web.client.dto.DifficultiesRequest;
+import com.schoolcopilot.user_service.web.client.dto.GoalRequest;
+import com.schoolcopilot.user_service.web.client.dto.IdentityRequest;
+import com.schoolcopilot.user_service.web.client.dto.LevelRequest;
+import com.schoolcopilot.user_service.web.client.dto.OnboardingStateResponse;
+import com.schoolcopilot.user_service.web.client.dto.PhotoRequest;
+import com.schoolcopilot.user_service.web.client.dto.ProfileResponse;
+import com.schoolcopilot.user_service.web.client.dto.SubjectsRequest;
+import com.schoolcopilot.user_service.web.client.dto.TrackRequest;
 
 import jakarta.validation.Valid;
 

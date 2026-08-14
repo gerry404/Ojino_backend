@@ -10,8 +10,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.schoolcopilot.user_service.repository.ReferenceRepositories;
 import com.schoolcopilot.user_service.repository.StudentProfileRepository;
 import com.schoolcopilot.user_service.service.profile.ProfileService;
-import com.schoolcopilot.user_service.web.OnboardingController;
-import com.schoolcopilot.user_service.web.ReferenceController;
+import com.schoolcopilot.user_service.web.client.OnboardingController;
+import com.schoolcopilot.user_service.web.client.ReferenceController;
 
 /**
  * Verifie le cablage complet : securite, validation des tokens, controleurs.

@@ -1,4 +1,4 @@
-package com.schoolcopilot.user_service.web;
+package com.schoolcopilot.user_service.web.client;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.schoolcopilot.user_service.service.profile.ProfileService;
-import com.schoolcopilot.user_service.web.dto.ProfileResponse;
+import com.schoolcopilot.user_service.web.client.dto.ProfileResponse;
 
 @RestController
 @RequestMapping("/api/v1/profile")
