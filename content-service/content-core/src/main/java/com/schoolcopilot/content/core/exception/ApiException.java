@@ -41,6 +41,22 @@ public class ApiException extends RuntimeException {
                 "Filiere inconnue dans ce systeme : " + code);
     }
 
+    public static ApiException unknownNotion(Object code) {
+        return new ApiException(HttpStatus.NOT_FOUND, "unknown_notion",
+                "Notion inconnue dans ce systeme : " + code);
+    }
+
+    /**
+     * Le graphe des prerequis doit rester acyclique. Un cycle rendrait l'ordre
+     * d'apprentissage impossible a calculer et bloquerait l'eleve : chaque notion
+     * attendrait l'autre.
+     */
+    public static ApiException prerequisiteCycle(String notion, Object candidates) {
+        return new ApiException(HttpStatus.CONFLICT, "prerequisite_cycle",
+                "Declarer " + candidates + " comme prerequis de " + notion
+                        + " creerait une boucle : l'une de ces notions depend deja de " + notion + ".");
+    }
+
     public static ApiException unknownChapter(String code) {
         return new ApiException(HttpStatus.NOT_FOUND, "unknown_chapter",
                 "Chapitre inconnu dans ce systeme : " + code);

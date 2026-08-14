@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.schoolcopilot.content.core.service.ChapterService;
+import com.schoolcopilot.content.core.service.NotionService;
 import com.schoolcopilot.content.core.web.client.dto.ChapterView;
+import com.schoolcopilot.content.core.web.client.dto.NotionView;
 
 /**
  * Le programme : chapitres et, bientot, notions.
@@ -26,9 +28,11 @@ import com.schoolcopilot.content.core.web.client.dto.ChapterView;
 public class CurriculumController {
 
     private final ChapterService chapters;
+    private final NotionService notions;
 
-    public CurriculumController(ChapterService chapters) {
+    public CurriculumController(ChapterService chapters, NotionService notions) {
         this.chapters = chapters;
+        this.notions = notions;
     }
 
     /**
@@ -53,5 +57,41 @@ public class CurriculumController {
     @GetMapping("/systems/{systemCode}/chapters/{code}")
     public ChapterView chapter(@PathVariable String systemCode, @PathVariable String code) {
         return ChapterView.from(chapters.requireVisible(systemCode, code));
+    }
+
+    // ------------------------------------------------------------------
+    // Notions
+    // ------------------------------------------------------------------
+
+    @GetMapping("/systems/{systemCode}/chapters/{chapterCode}/notions")
+    public List<NotionView> notions(@PathVariable String systemCode,
+            @PathVariable String chapterCode) {
+        return notions.visibleFor(systemCode, chapterCode).stream()
+                .map(NotionView::from)
+                .toList();
+    }
+
+    @GetMapping("/systems/{systemCode}/notions/{code}")
+    public NotionView notion(@PathVariable String systemCode, @PathVariable String code) {
+        return NotionView.from(notions.requireVisible(systemCode, code));
+    }
+
+    /**
+     * Le parcours de rattrapage : tout ce qu'il faut maitriser avant cette notion,
+     * dans l'ordre ou le reprendre.
+     *
+     * <p>C'est ce que consommera {@code learning-service} pour proposer une
+     * remediation a un eleve qui bloque, plutot que de lui faire tout recommencer.
+     */
+    @GetMapping("/systems/{systemCode}/notions/{code}/learning-path")
+    public List<NotionView> learningPath(@PathVariable String systemCode,
+            @PathVariable String code) {
+        return notions.learningPath(systemCode, code).stream().map(NotionView::from).toList();
+    }
+
+    /** L'autre sens du graphe : ce que la maitrise de cette notion ouvre. */
+    @GetMapping("/systems/{systemCode}/notions/{code}/unlocks")
+    public List<NotionView> unlocks(@PathVariable String systemCode, @PathVariable String code) {
+        return notions.unlockedBy(systemCode, code).stream().map(NotionView::from).toList();
     }
 }
