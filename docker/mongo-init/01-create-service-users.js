@@ -13,6 +13,7 @@ const services = [
     { database: 'ojino_auth', user: 'auth_service' },
     { database: 'ojino_user', user: 'user_service' },
     { database: 'ojino_content', user: 'content_service' },
+    { database: 'ojino_learning', user: 'learning_service' },
 ];
 
 services.forEach(function (service) {
