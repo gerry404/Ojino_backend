@@ -1,0 +1,52 @@
+# MongoDB pour le developpement local.
+#
+# Chaque service a sa propre base ET son propre utilisateur : auth-service ne
+# peut pas lire les profils, content-service ne peut pas lire les comptes. Si un
+# service est compromis, le degat s'arrete a sa base.
+#
+# Les identifiants ci-dessous sont ceux du developpement. En production, tout
+# passe par MONGODB_URI et rien de ce fichier n'est utilise.
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: ojino-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-ojino_root_dev}
+      # Lu par le script d'initialisation ci-dessous.
+      OJINO_DB_PASSWORD: ${OJINO_DB_PASSWORD:-ojino_dev_password}
+    volumes:
+      - mongo-data:/data/db
+      # Les scripts de ce dossier ne s'executent qu'au tout premier demarrage,
+      # quand le volume est vide. Pour les rejouer : docker compose down -v
+      - ./docker/mongo-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Interface web pour inspecter les donnees. Uniquement en developpement :
+  # elle est demarree par le profil "tools" et non par defaut.
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: ojino-mongo-express
+    profiles: ["tools"]
+    restart: unless-stopped
+    ports:
+      # 8090 et non 8081 : ce dernier est deja pris par l'auth-service.
+      - "8090:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USER:-root}:${MONGO_ROOT_PASSWORD:-ojino_root_dev}@mongo:27017/
+      ME_CONFIG_BASICAUTH: "false"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo-data:

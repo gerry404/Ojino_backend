@@ -1,0 +1,18 @@
+# Secrets locaux : jamais commites.
+.env
+
+# Sorties de build
+target/
+build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Systeme
+.DS_Store
+Thumbs.db
