@@ -97,6 +97,41 @@ Chaque étape renvoie la même réponse :
 }
 ```
 
+## Administration
+
+Le back-office vit sous `/api/v1/admin` et exige `ROLE_ADMIN`, imposé sur le **préfixe**
+dans la chaîne de filtres — une route ajoutée plus tard reste fermée même sans annotation.
+
+**Le référentiel scolaire** (`/api/v1/admin/reference`) : c'est ce qui rend le référentiel
+réellement configurable. Sans ces routes, ouvrir l'app à un nouveau pays supposerait de
+modifier Mongo à la main.
+
+| Méthode | Route |
+|---|---|
+| GET / POST | `/systems` |
+| PUT | `/systems/{code}` |
+| POST | `/systems/{code}/active?value=false` |
+| GET / POST | `/systems/{s}/levels` · `/tracks` · `/subjects` |
+| PUT / DELETE | `/systems/{s}/levels/{code}` · `/tracks/{code}` · `/subjects/{code}` |
+
+Deux protections contre les référentiels cassés :
+
+- **Un système ne se supprime pas, il se désactive.** Les profils qui s'y rattachent
+  doivent rester lisibles.
+- **Un niveau, une filière ou une matière encore référencé refuse d'être supprimé.**
+  L'erreur indique combien de profils sont concernés. Sinon ces profils pointeraient vers
+  un code disparu, et rien ne les réparerait.
+
+Une filière ou une matière ne peut pas non plus citer un niveau inexistant : elle
+existerait en base sans jamais apparaître nulle part.
+
+**Les profils** (`/api/v1/admin/profiles`) : recherche paginée avec filtres facultatifs
+combinables (`q`, `systemCode`, `levelCode`), et détail par identifiant. La vue montre
+l'avancement du parcours d'inscription — utile pour voir où les élèves abandonnent.
+
+C'est volontairement **en lecture seule** : corriger un niveau ou une matière se fait
+depuis l'application, par l'élève lui-même.
+
 ## Démarrer
 
 Mongo doit tourner, et `OJINO_JWT_SECRET` doit être **exactement le même** que celui de
@@ -125,9 +160,10 @@ Le service écoute sur **8082** (l'auth-service sur 8081).
 ./mvnw test
 ```
 
-32 tests, aucun ne demande de base de données : suggestion par l'âge et ses cas limites,
+51 tests, aucun ne demande de base de données : suggestion par l'âge et ses cas limites,
 cascade de réinitialisation au changement de niveau, chevauchement de créneaux, ordre des
-étapes, lecture du fichier de référentiel, câblage du contexte.
+étapes, lecture du fichier de référentiel, protections de suppression du back-office,
+assemblage des filtres de recherche, câblage du contexte.
 
 ## Reste à faire
 

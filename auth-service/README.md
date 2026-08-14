@@ -74,6 +74,34 @@ Les erreurs sortent en `application/problem+json` avec un champ `code` stable
 (`invalid_credentials`, `otp_throttled`, `email_already_used`…) : les applications
 testent ce code, jamais le message.
 
+## Administration
+
+Le back-office vit sous `/api/v1/admin` et exige `ROLE_ADMIN`. La règle est posée sur le
+**préfixe**, dans la chaîne de filtres : une route admin ajoutée plus tard reste fermée
+même si on oublie de l'annoter.
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| GET | `/api/v1/admin/users?q=&page=&size=` | Recherche paginée (email, téléphone, nom) |
+| GET | `/api/v1/admin/users/{id}` | Détail d'un compte |
+| POST | `/api/v1/admin/users/{id}/disable` | Désactiver — coupe aussi les sessions |
+| POST | `/api/v1/admin/users/{id}/enable` | Réactiver |
+| PUT | `/api/v1/admin/users/{id}/roles` | Remplacer les rôles |
+| GET | `/api/v1/admin/users/{id}/sessions` | Appareils connectés |
+| DELETE | `/api/v1/admin/users/{id}/sessions` | Déconnecter partout |
+
+Désactiver un compte **révoque ses sessions dans la foulée** : sans cela il resterait
+utilisable jusqu'à l'expiration de son access token.
+
+Deux garde-fous : un administrateur ne peut ni se désactiver, ni se retirer son propre
+rôle. Une équipe qui se verrouille hors de son back-office n'a aucun moyen de revenir
+sans intervention directe en base.
+
+**Le premier administrateur** se déclare par `OJINO_ADMIN_EMAILS` : ces comptes reçoivent
+`ADMIN` à la connexion. Sans cela personne ne pourrait jamais le devenir, puisqu'il faut
+déjà l'être pour promouvoir quelqu'un. L'attribution est uniquement additive — retirer
+une adresse de la liste ne retire pas le rôle, cela passe par l'API.
+
 ## Démarrer
 
 Mongo doit tourner — le service refuse de démarrer sans lui.
@@ -110,6 +138,7 @@ ligne :
 | `MONGODB_URI` | Connexion Mongo. |
 | `GOOGLE_CLIENT_IDS` | Client IDs Google, séparés par des virgules — un par plateforme (web, iOS, Android). |
 | `APPLE_CLIENT_IDS` | Bundle ID (iOS) et Services ID (web). |
+| `OJINO_ADMIN_EMAILS` | Adresses recevant `ROLE_ADMIN` à la connexion. |
 
 Tant que la liste de client IDs d'un provider est vide, ce provider **refuse** les
 connexions au lieu d'accepter n'importe quel token. C'est volontaire.
@@ -155,8 +184,9 @@ Claims présents : `sub` (id utilisateur), `roles`, et selon le compte `email`, 
 ./mvnw test
 ```
 
-45 tests, aucun ne demande de base de données : rotation et détection de vol, cycle de
-vie des codes SMS, convergence des identités, signature des JWT, câblage du contexte.
+62 tests, aucun ne demande de base de données : rotation et détection de vol, cycle de
+vie des codes SMS, convergence des identités, signature des JWT, garde-fous du
+back-office, câblage du contexte.
 
 Un test de bout en bout avec un vrai Mongo reste à écrire (Testcontainers) — il
 couvrirait ce que les doublures ne peuvent pas vérifier, notamment les index uniques.
