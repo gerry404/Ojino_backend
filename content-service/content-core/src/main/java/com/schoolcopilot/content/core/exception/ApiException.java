@@ -41,6 +41,20 @@ public class ApiException extends RuntimeException {
                 "Filiere inconnue dans ce systeme : " + code);
     }
 
+    public static ApiException unknownResource(String code) {
+        return new ApiException(HttpStatus.NOT_FOUND, "unknown_resource",
+                "Ressource inconnue dans ce systeme : " + code);
+    }
+
+    public static ApiException unknownExercise(String code) {
+        return new ApiException(HttpStatus.NOT_FOUND, "unknown_exercise",
+                "Exercice inconnu dans ce systeme : " + code);
+    }
+
+    public static ApiException invalidResource(String detail) {
+        return new ApiException(HttpStatus.BAD_REQUEST, "invalid_resource", detail);
+    }
+
     public static ApiException unknownNotion(Object code) {
         return new ApiException(HttpStatus.NOT_FOUND, "unknown_notion",
                 "Notion inconnue dans ce systeme : " + code);

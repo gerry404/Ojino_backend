@@ -14,12 +14,18 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.schoolcopilot.content.core.domain.Chapter;
+import com.schoolcopilot.content.core.domain.Exercise;
+import com.schoolcopilot.content.core.domain.LearningResource;
 import com.schoolcopilot.content.core.domain.Notion;
 import com.schoolcopilot.content.core.domain.PublicationStatus;
 import com.schoolcopilot.content.core.service.ChapterService;
+import com.schoolcopilot.content.core.service.ExerciseService;
+import com.schoolcopilot.content.core.service.LearningResourceService;
 import com.schoolcopilot.content.core.service.NotionService;
 import com.schoolcopilot.content.core.web.admin.dto.ChapterUpsertRequest;
+import com.schoolcopilot.content.core.web.admin.dto.ExerciseUpsertRequest;
 import com.schoolcopilot.content.core.web.admin.dto.NotionUpsertRequest;
+import com.schoolcopilot.content.core.web.admin.dto.ResourceUpsertRequest;
 
 import jakarta.validation.Valid;
 
@@ -35,10 +41,15 @@ public class AdminCurriculumController {
 
     private final ChapterService chapters;
     private final NotionService notions;
+    private final LearningResourceService resources;
+    private final ExerciseService exercises;
 
-    public AdminCurriculumController(ChapterService chapters, NotionService notions) {
+    public AdminCurriculumController(ChapterService chapters, NotionService notions,
+            LearningResourceService resources, ExerciseService exercises) {
         this.chapters = chapters;
         this.notions = notions;
+        this.resources = resources;
+        this.exercises = exercises;
     }
 
     /** Inclut les brouillons et les archives, contrairement a la route publique. */
@@ -120,5 +131,78 @@ public class AdminCurriculumController {
     public Notion setNotionArchived(@PathVariable String systemCode, @PathVariable String code,
             @RequestParam boolean value) {
         return notions.setArchived(systemCode, code, value);
+    }
+
+    // ------------------------------------------------------------------
+    // Supports d'apprentissage
+    // ------------------------------------------------------------------
+
+    @GetMapping("/systems/{systemCode}/notions/{notionCode}/resources")
+    public List<LearningResource> listResources(@PathVariable String systemCode,
+            @PathVariable String notionCode) {
+        return resources.listAll(systemCode, notionCode);
+    }
+
+    @PostMapping("/systems/{systemCode}/notions/{notionCode}/resources")
+    @ResponseStatus(HttpStatus.CREATED)
+    public LearningResource createResource(@PathVariable String systemCode,
+            @PathVariable String notionCode,
+            @Valid @RequestBody ResourceUpsertRequest request) {
+        return resources.create(systemCode, notionCode, request.toDomain());
+    }
+
+    @PutMapping("/systems/{systemCode}/resources/{code}")
+    public LearningResource updateResource(@PathVariable String systemCode,
+            @PathVariable String code, @Valid @RequestBody ResourceUpsertRequest request) {
+        return resources.update(systemCode, code, request.toDomain());
+    }
+
+    @PostMapping("/systems/{systemCode}/resources/{code}/status")
+    public LearningResource setResourceStatus(@PathVariable String systemCode,
+            @PathVariable String code, @RequestParam PublicationStatus value) {
+        return resources.setStatus(systemCode, code, value);
+    }
+
+    @PostMapping("/systems/{systemCode}/resources/{code}/archived")
+    public LearningResource setResourceArchived(@PathVariable String systemCode,
+            @PathVariable String code, @RequestParam boolean value) {
+        return resources.setArchived(systemCode, code, value);
+    }
+
+    // ------------------------------------------------------------------
+    // Exercices
+    // ------------------------------------------------------------------
+
+    /** Le corrige figure ici : le back-office est precisement la ou on le redige. */
+    @GetMapping("/systems/{systemCode}/notions/{notionCode}/exercises")
+    public List<Exercise> listExercises(@PathVariable String systemCode,
+            @PathVariable String notionCode) {
+        return exercises.listAll(systemCode, notionCode);
+    }
+
+    @PostMapping("/systems/{systemCode}/notions/{notionCode}/exercises")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Exercise createExercise(@PathVariable String systemCode,
+            @PathVariable String notionCode,
+            @Valid @RequestBody ExerciseUpsertRequest request) {
+        return exercises.create(systemCode, notionCode, request.toDomain());
+    }
+
+    @PutMapping("/systems/{systemCode}/exercises/{code}")
+    public Exercise updateExercise(@PathVariable String systemCode, @PathVariable String code,
+            @Valid @RequestBody ExerciseUpsertRequest request) {
+        return exercises.update(systemCode, code, request.toDomain());
+    }
+
+    @PostMapping("/systems/{systemCode}/exercises/{code}/status")
+    public Exercise setExerciseStatus(@PathVariable String systemCode, @PathVariable String code,
+            @RequestParam PublicationStatus value) {
+        return exercises.setStatus(systemCode, code, value);
+    }
+
+    @PostMapping("/systems/{systemCode}/exercises/{code}/archived")
+    public Exercise setExerciseArchived(@PathVariable String systemCode,
+            @PathVariable String code, @RequestParam boolean value) {
+        return exercises.setArchived(systemCode, code, value);
     }
 }

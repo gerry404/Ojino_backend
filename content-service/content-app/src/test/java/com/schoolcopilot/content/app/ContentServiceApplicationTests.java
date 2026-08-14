@@ -55,6 +55,12 @@ class ContentServiceApplicationTests {
     CurriculumRepositories.Notions notions;
 
     @MockitoBean
+    CurriculumRepositories.LearningResources learningResources;
+
+    @MockitoBean
+    CurriculumRepositories.Exercises exercises;
+
+    @MockitoBean
     LearningDomainRepository learningDomains;
 
     @MockitoBean

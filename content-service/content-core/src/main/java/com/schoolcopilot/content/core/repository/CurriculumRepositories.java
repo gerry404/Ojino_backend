@@ -7,6 +7,9 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import com.schoolcopilot.content.core.domain.Chapter;
+import com.schoolcopilot.content.core.domain.Difficulty;
+import com.schoolcopilot.content.core.domain.Exercise;
+import com.schoolcopilot.content.core.domain.LearningResource;
 import com.schoolcopilot.content.core.domain.Notion;
 
 /** Les acces au programme, regroupes pour rester lisibles. */
@@ -43,5 +46,26 @@ public final class CurriculumRepositories {
         /** Les notions que celle-ci debloque. */
         List<Notion> findBySystemCodeAndPrerequisiteCodesContaining(String systemCode,
                 String prerequisiteCode);
+    }
+
+    @Repository
+    public interface LearningResources extends MongoRepository<LearningResource, String> {
+
+        List<LearningResource> findBySystemCodeAndNotionCodeOrderByRankAsc(String systemCode,
+                String notionCode);
+
+        Optional<LearningResource> findBySystemCodeAndCode(String systemCode, String code);
+    }
+
+    @Repository
+    public interface Exercises extends MongoRepository<Exercise, String> {
+
+        List<Exercise> findBySystemCodeAndNotionCodeOrderByDifficultyAscCodeAsc(String systemCode,
+                String notionCode);
+
+        List<Exercise> findBySystemCodeAndNotionCodeAndDifficultyOrderByCodeAsc(String systemCode,
+                String notionCode, Difficulty difficulty);
+
+        Optional<Exercise> findBySystemCodeAndCode(String systemCode, String code);
     }
 }

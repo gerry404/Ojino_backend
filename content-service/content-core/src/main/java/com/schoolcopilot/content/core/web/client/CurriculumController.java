@@ -1,6 +1,7 @@
 package com.schoolcopilot.content.core.web.client;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -8,10 +9,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.schoolcopilot.content.core.domain.Difficulty;
 import com.schoolcopilot.content.core.service.ChapterService;
+import com.schoolcopilot.content.core.service.ExerciseService;
+import com.schoolcopilot.content.core.service.LearningResourceService;
 import com.schoolcopilot.content.core.service.NotionService;
 import com.schoolcopilot.content.core.web.client.dto.ChapterView;
+import com.schoolcopilot.content.core.web.client.dto.ExerciseView;
 import com.schoolcopilot.content.core.web.client.dto.NotionView;
+import com.schoolcopilot.content.core.web.client.dto.ResourceView;
 
 /**
  * Le programme : chapitres et, bientot, notions.
@@ -29,10 +35,15 @@ public class CurriculumController {
 
     private final ChapterService chapters;
     private final NotionService notions;
+    private final LearningResourceService resources;
+    private final ExerciseService exercises;
 
-    public CurriculumController(ChapterService chapters, NotionService notions) {
+    public CurriculumController(ChapterService chapters, NotionService notions,
+            LearningResourceService resources, ExerciseService exercises) {
         this.chapters = chapters;
         this.notions = notions;
+        this.resources = resources;
+        this.exercises = exercises;
     }
 
     /**
@@ -93,5 +104,49 @@ public class CurriculumController {
     @GetMapping("/systems/{systemCode}/notions/{code}/unlocks")
     public List<NotionView> unlocks(@PathVariable String systemCode, @PathVariable String code) {
         return notions.unlockedBy(systemCode, code).stream().map(NotionView::from).toList();
+    }
+
+    // ------------------------------------------------------------------
+    // Supports et exercices
+    // ------------------------------------------------------------------
+
+    @GetMapping("/systems/{systemCode}/notions/{notionCode}/resources")
+    public List<ResourceView> resources(@PathVariable String systemCode,
+            @PathVariable String notionCode) {
+        return resources.visibleFor(systemCode, notionCode).stream()
+                .map(ResourceView::from)
+                .toList();
+    }
+
+    /**
+     * @param difficulty facultatif : permet de proposer d'abord du facile a
+     *        quelqu'un qui vient d'echouer
+     */
+    @GetMapping("/systems/{systemCode}/notions/{notionCode}/exercises")
+    public List<ExerciseView> exercises(@PathVariable String systemCode,
+            @PathVariable String notionCode,
+            @RequestParam(required = false) Difficulty difficulty) {
+        return exercises.visibleFor(systemCode, notionCode, difficulty).stream()
+                .map(ExerciseView::from)
+                .toList();
+    }
+
+    /** L'enonce seul : {@link ExerciseView} ne porte aucun corrige. */
+    @GetMapping("/systems/{systemCode}/exercises/{code}")
+    public ExerciseView exercise(@PathVariable String systemCode, @PathVariable String code) {
+        return ExerciseView.from(exercises.requireVisible(systemCode, code));
+    }
+
+    /**
+     * Le corrige, par une route dediee.
+     *
+     * <p>Ouverte aujourd'hui ; elle sera conditionnee a une tentative quand
+     * {@code learning-service} existera. La separation est en place des maintenant
+     * pour que ce durcissement ne demande de toucher a aucun appelant.
+     */
+    @GetMapping("/systems/{systemCode}/exercises/{code}/solution")
+    public Map<String, String> solution(@PathVariable String systemCode,
+            @PathVariable String code) {
+        return Map.of("solution", exercises.solutionOf(systemCode, code));
     }
 }
