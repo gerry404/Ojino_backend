@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.DayOfWeek;
@@ -20,6 +23,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.schoolcopilot.user_service.TestFixtures;
+import com.schoolcopilot.user_service.client.ContentClient;
 import com.schoolcopilot.user_service.domain.profile.AvailabilitySlot;
 import com.schoolcopilot.user_service.domain.profile.Difficulty;
 import com.schoolcopilot.user_service.domain.profile.Goal;
@@ -35,6 +39,7 @@ class ProfileServiceTest {
     private final Map<String, StudentProfile> stored = new LinkedHashMap<>();
     private ProfileService profiles;
     private OnboardingService onboarding;
+    private ContentClient content;
 
     @BeforeEach
     void setUp() {
@@ -48,8 +53,9 @@ class ProfileServiceTest {
         when(repository.findById(anyString())).thenAnswer(invocation ->
                 Optional.ofNullable(stored.get(invocation.getArgument(0))));
 
-        onboarding = new OnboardingService(TestFixtures.referenceService());
-        profiles = new ProfileService(repository, TestFixtures.referenceService(), onboarding);
+        content = TestFixtures.contentClient();
+        onboarding = new OnboardingService();
+        profiles = new ProfileService(repository, content, onboarding);
     }
 
     // ------------------------------------------------------------------
@@ -81,9 +87,17 @@ class ProfileServiceTest {
     @DisplayName("un age invraisemblable est refuse")
     void implausibleAgeIsRejected() {
         assertThatThrownBy(() ->
-                profiles.updateIdentity(USER, "Paul", "Martin", LocalDate.now().minusYears(3)))
+                profiles.updateIdentity(USER, "Paul", "Martin", LocalDate.now().minusYears(1)))
                 .isInstanceOf(ApiException.class)
                 .hasFieldOrPropertyWithValue("code", "invalid_birth_date");
+    }
+
+    @Test
+    @DisplayName("un enfant de maternelle est accepte")
+    void preschoolerIsAccepted() {
+        // La plateforme commence a la maternelle : le plancher est a 3 ans.
+        assertThat(profiles.updateIdentity(USER, "Awa", "Ndiaye", LocalDate.now().minusYears(4))
+                .age()).isEqualTo(4);
     }
 
     // ------------------------------------------------------------------
@@ -136,6 +150,54 @@ class ProfileServiceTest {
         assertThatThrownBy(() -> profiles.updateTrack(USER, "D"))
                 .isInstanceOf(ApiException.class)
                 .hasFieldOrPropertyWithValue("code", "step_out_of_order");
+    }
+
+    // ------------------------------------------------------------------
+    // Dependance au content-service
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("l'existence d'une filiere pour ce niveau est recopiee depuis le referentiel")
+    void levelHasTracksIsCopiedFromContent() {
+        assertThat(profiles.updateLevel(USER, TestFixtures.SYSTEM, "TLE").isLevelHasTracks())
+                .isTrue();
+        assertThat(profiles.updateLevel(USER, TestFixtures.SYSTEM, "5E").isLevelHasTracks())
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("lire l'etat du parcours n'appelle jamais le content-service")
+    void readingStateNeverCallsContent() {
+        completeUpTo(OnboardingStep.AVAILABILITY);
+        clearInvocations(content);
+
+        onboarding.stateOf(stored.get(USER));
+
+        // L'etat est lu a chaque ouverture de l'application : un appel reseau ici
+        // couterait cher et rendrait l'ecran dependant d'un autre service.
+        verifyNoInteractions(content);
+    }
+
+    @Test
+    @DisplayName("un niveau inconnu du referentiel est refuse")
+    void unknownLevelIsRejected() {
+        assertThatThrownBy(() -> profiles.updateLevel(USER, TestFixtures.SYSTEM, "XYZ"))
+                .isInstanceOf(ApiException.class)
+                .hasFieldOrPropertyWithValue("code", "unknown_reference");
+    }
+
+    @Test
+    @DisplayName("un content-service indisponible remonte en 503, pas en erreur de saisie")
+    void contentOutageSurfacesAsUnavailable() {
+        // doThrow et non when(...).thenThrow : la doublure est deja programmee, et
+        // reappeler la methode pour la re-programmer declencherait l'ancien stub.
+        doThrow(ApiException.contentUnavailable())
+                .when(content).requireSelectableLevel(anyString(), anyString());
+
+        // 503 et non 400 : l'eleve n'a rien fait de mal, il peut reessayer tel quel.
+        assertThatThrownBy(() -> profiles.updateLevel(USER, TestFixtures.SYSTEM, "TLE"))
+                .isInstanceOf(ApiException.class)
+                .hasFieldOrPropertyWithValue("code", "content_unavailable");
     }
 
     // ------------------------------------------------------------------

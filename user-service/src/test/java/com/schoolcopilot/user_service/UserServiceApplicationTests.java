@@ -8,11 +8,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import com.schoolcopilot.user_service.repository.ReferenceRepositories;
 import com.schoolcopilot.user_service.repository.StudentProfileRepository;
 import com.schoolcopilot.user_service.service.profile.ProfileService;
 import com.schoolcopilot.user_service.web.client.OnboardingController;
-import com.schoolcopilot.user_service.web.client.ReferenceController;
+import com.schoolcopilot.user_service.web.client.ProfileController;
 
 /**
  * Verifie le cablage complet : securite, validation des tokens, controleurs.
@@ -36,18 +35,6 @@ class UserServiceApplicationTests {
     @MockitoBean
     MongoTemplate mongoTemplate;
 
-    @MockitoBean
-    ReferenceRepositories.EducationSystems educationSystems;
-
-    @MockitoBean
-    ReferenceRepositories.EducationLevels educationLevels;
-
-    @MockitoBean
-    ReferenceRepositories.Tracks tracks;
-
-    @MockitoBean
-    ReferenceRepositories.Subjects subjects;
-
     @Autowired
     ProfileService profileService;
 
@@ -55,12 +42,12 @@ class UserServiceApplicationTests {
     OnboardingController onboardingController;
 
     @Autowired
-    ReferenceController referenceController;
+    ProfileController profileController;
 
     @Test
     void contextLoads() {
         assertThat(profileService).isNotNull();
         assertThat(onboardingController).isNotNull();
-        assertThat(referenceController).isNotNull();
+        assertThat(profileController).isNotNull();
     }
 }

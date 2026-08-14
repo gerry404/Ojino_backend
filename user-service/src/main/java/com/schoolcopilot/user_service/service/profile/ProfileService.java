@@ -4,20 +4,22 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.schoolcopilot.user_service.client.ContentClient;
 import com.schoolcopilot.user_service.domain.profile.AvailabilitySlot;
 import com.schoolcopilot.user_service.domain.profile.Difficulty;
 import com.schoolcopilot.user_service.domain.profile.Goal;
 import com.schoolcopilot.user_service.domain.profile.OnboardingStep;
 import com.schoolcopilot.user_service.domain.profile.StudentProfile;
-import com.schoolcopilot.user_service.domain.reference.EducationLevel;
 import com.schoolcopilot.user_service.exception.ApiException;
 import com.schoolcopilot.user_service.repository.StudentProfileRepository;
-import com.schoolcopilot.user_service.service.reference.ReferenceService;
 
 /**
  * Le profil scolaire, construit etape par etape.
@@ -25,21 +27,25 @@ import com.schoolcopilot.user_service.service.reference.ReferenceService;
  * <p>Chaque etape s'enregistre seule. Quelqu'un qui abandonne au milieu du
  * parcours retrouve exactement ou il en etait, et peut revenir modifier une etape
  * deja validee sans repasser par les autres.
+ *
+ * <p>Ce service ne detient pas le referentiel scolaire : il ne stocke que les
+ * codes choisis et demande a {@code content-service} de les valider. Ces appels
+ * n'ont lieu que sur les ecritures — huit fois dans la vie d'un compte.
  */
 @Service
 public class ProfileService {
 
-    private static final int MIN_AGE = 5;
+    private static final int MIN_AGE = 3;
     private static final int MAX_AGE = 100;
 
     private final StudentProfileRepository profiles;
-    private final ReferenceService reference;
+    private final ContentClient content;
     private final OnboardingService onboarding;
 
-    public ProfileService(StudentProfileRepository profiles, ReferenceService reference,
+    public ProfileService(StudentProfileRepository profiles, ContentClient content,
             OnboardingService onboarding) {
         this.profiles = profiles;
-        this.reference = reference;
+        this.content = content;
         this.onboarding = onboarding;
     }
 
@@ -82,7 +88,7 @@ public class ProfileService {
     }
 
     public StudentProfile updateLevel(String userId, String systemCode, String levelCode) {
-        EducationLevel level = reference.requireLevel(systemCode, levelCode);
+        ContentClient.LevelView level = content.requireSelectableLevel(systemCode, levelCode);
 
         StudentProfile profile = getOrCreate(userId);
         boolean levelChanged = !Objects.equals(profile.getSystemCode(), systemCode)
@@ -90,6 +96,9 @@ public class ProfileService {
 
         profile.setSystemCode(systemCode);
         profile.setLevelCode(levelCode);
+        // Recopie ici pour que la lecture de l'etat du parcours n'ait plus jamais
+        // besoin d'interroger content-service.
+        profile.setLevelHasTracks(level.hasTracks());
 
         if (levelChanged) {
             // Filiere, matieres et difficultes dependent du niveau : les garder apres
@@ -115,12 +124,17 @@ public class ProfileService {
         StudentProfile profile = getOrCreate(userId);
         requireLevelChosen(profile, OnboardingStep.TRACK);
 
-        EducationLevel level = reference.requireLevel(profile.getSystemCode(), profile.getLevelCode());
-        if (!level.hasTracks()) {
-            throw ApiException.trackNotApplicable(level.label());
+        if (!profile.isLevelHasTracks()) {
+            throw ApiException.trackNotApplicable(profile.getLevelCode());
         }
 
-        reference.requireTrack(profile.getSystemCode(), profile.getLevelCode(), trackCode);
+        List<String> available = content
+                .tracksFor(profile.getSystemCode(), profile.getLevelCode()).stream()
+                .map(ContentClient.TrackView::code)
+                .toList();
+        if (!available.contains(trackCode)) {
+            throw ApiException.trackNotAvailable(trackCode, profile.getLevelCode());
+        }
 
         if (!Objects.equals(profile.getTrackCode(), trackCode)) {
             // Les matieres dependent aussi de la filiere.
@@ -140,13 +154,23 @@ public class ProfileService {
         requireLevelChosen(profile, OnboardingStep.SUBJECTS);
 
         if (subjectCodes == null || subjectCodes.isEmpty()) {
-            throw new ApiException(org.springframework.http.HttpStatus.BAD_REQUEST,
+            throw new ApiException(HttpStatus.BAD_REQUEST,
                     "no_subjects", "Choisissez au moins une matiere.");
         }
 
-        List<String> validated = reference.validateSubjects(profile.getSystemCode(),
-                profile.getLevelCode(), profile.getTrackCode(), subjectCodes);
+        Set<String> allowed = content
+                .subjectsFor(profile.getSystemCode(), profile.getLevelCode(), profile.getTrackCode())
+                .stream()
+                .map(ContentClient.SubjectView::code)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 
+        Set<String> unknown = new LinkedHashSet<>(subjectCodes);
+        unknown.removeAll(allowed);
+        if (!unknown.isEmpty()) {
+            throw ApiException.unknownSubjects(unknown);
+        }
+
+        List<String> validated = List.copyOf(new LinkedHashSet<>(subjectCodes));
         profile.setSubjectCodes(new ArrayList<>(validated));
 
         // Une difficulte sur une matiere qu'on ne suit plus n'a plus de sens.
@@ -177,13 +201,11 @@ public class ProfileService {
         List<Difficulty> cleaned = difficulties == null ? List.of() : difficulties;
         cleaned.forEach(difficulty -> {
             if (!difficulty.isValid()) {
-                throw new ApiException(org.springframework.http.HttpStatus.BAD_REQUEST,
-                        "invalid_difficulty",
+                throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_difficulty",
                         "Chaque difficulte demande une matiere et une intensite de 1 a 3.");
             }
             if (!profile.getSubjectCodes().contains(difficulty.subjectCode())) {
-                throw new ApiException(org.springframework.http.HttpStatus.BAD_REQUEST,
-                        "difficulty_on_unknown_subject",
+                throw new ApiException(HttpStatus.BAD_REQUEST, "difficulty_on_unknown_subject",
                         "La matiere " + difficulty.subjectCode() + " ne fait pas partie de vos matieres.");
             }
         });

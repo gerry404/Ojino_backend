@@ -42,6 +42,21 @@ public class StudentProfile {
     /** Null tant que le niveau choisi ne se decline pas en filieres. */
     private String trackCode;
 
+    /**
+     * Recopie depuis le referentiel au moment ou le niveau est choisi.
+     *
+     * <p>C'est ce qui permet a l'etat du parcours d'inscription — lu a chaque
+     * ouverture de l'application — de se calculer sans le moindre appel a
+     * content-service. La consultation reste donc rapide, et fonctionne meme si
+     * content-service est indisponible.
+     *
+     * <p>Contrepartie assumee : si un administrateur change {@code hasTracks} sur
+     * un niveau, les profils deja rattaches gardent l'ancienne valeur jusqu'a ce
+     * que leur niveau soit reconfirme. C'est un changement rare, et l'alternative
+     * — un appel reseau sur chaque lecture — coute bien plus cher.
+     */
+    private boolean levelHasTracks;
+
     private List<String> subjectCodes = new ArrayList<>();
 
     private Goal goal;
@@ -164,6 +179,14 @@ public class StudentProfile {
 
     public void setTrackCode(String trackCode) {
         this.trackCode = trackCode;
+    }
+
+    public boolean isLevelHasTracks() {
+        return levelHasTracks;
+    }
+
+    public void setLevelHasTracks(boolean levelHasTracks) {
+        this.levelHasTracks = levelHasTracks;
     }
 
     public List<String> getSubjectCodes() {

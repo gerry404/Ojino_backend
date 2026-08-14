@@ -70,9 +70,6 @@ public class SecurityConfig {
                         // route admin oublie son annotation, et aucune regle plus
                         // permissive ne peut le devancer.
                         .requestMatchers("/api/v1/admin/**").hasRole(Role.ADMIN)
-                        // Le referentiel scolaire est public en lecture : les ecrans
-                        // d'inscription en ont besoin avant meme que le profil existe.
-                        .requestMatchers("/api/v1/reference/**").permitAll()
                         .requestMatchers("/actuator/health/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

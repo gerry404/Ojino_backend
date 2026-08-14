@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 
 import com.schoolcopilot.user_service.domain.profile.OnboardingStep;
 import com.schoolcopilot.user_service.domain.profile.StudentProfile;
-import com.schoolcopilot.user_service.service.reference.ReferenceService;
 
 /**
  * L'etat du parcours de creation de profil.
@@ -15,15 +14,13 @@ import com.schoolcopilot.user_service.service.reference.ReferenceService;
  * de l'afficher. Deux consequences utiles : le mobile et le web ne peuvent pas
  * diverger, et modifier le parcours ne demande pas de publier une nouvelle version
  * sur les stores.
+ *
+ * <p>Ce service ne fait aucun appel reseau : tout ce dont il a besoin est sur le
+ * profil. C'est important, car l'etat du parcours est lu a chaque ouverture de
+ * l'application.
  */
 @Service
 public class OnboardingService {
-
-    private final ReferenceService reference;
-
-    public OnboardingService(ReferenceService reference) {
-        this.reference = reference;
-    }
 
     /**
      * @param applicable une etape peut ne pas concerner cet eleve : la filiere ne
@@ -74,14 +71,17 @@ public class OnboardingService {
      * Seule la filiere est conditionnelle : elle ne se pose que pour les niveaux
      * qui s'y pretent. Tant que le niveau n'est pas choisi, l'etape reste affichee
      * pour que l'eleve voie le parcours complet devant lui.
+     *
+     * <p>L'information vient du profil, ou elle a ete recopiee au moment du choix
+     * du niveau — pas d'un appel a content-service.
      */
     private boolean isApplicable(OnboardingStep step, StudentProfile profile) {
         if (step != OnboardingStep.TRACK) {
             return true;
         }
-        if (profile.getLevelCode() == null || profile.getSystemCode() == null) {
+        if (profile.getLevelCode() == null) {
             return true;
         }
-        return reference.requireLevel(profile.getSystemCode(), profile.getLevelCode()).hasTracks();
+        return profile.isLevelHasTracks();
     }
 }
