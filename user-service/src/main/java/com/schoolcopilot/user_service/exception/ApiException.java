@@ -35,9 +35,25 @@ public class ApiException extends RuntimeException {
                 "La filiere " + track + " n'existe pas en " + level + ".");
     }
 
-    public static ApiException trackNotApplicable(String level) {
-        return new ApiException(HttpStatus.BAD_REQUEST, "track_not_applicable",
-                "Le niveau " + level + " ne se decline pas en filieres.");
+    /**
+     * L'etape ne concerne pas le cycle de cet eleve. Sans ce refus, un appel
+     * direct a l'API pourrait attribuer une filiere de Terminale a un enfant de
+     * maternelle.
+     */
+    public static ApiException stepNotApplicable(String step, String level) {
+        return new ApiException(HttpStatus.BAD_REQUEST, "step_not_applicable",
+                "L'etape " + step + " ne concerne pas le cycle du niveau " + level + ".");
+    }
+
+    public static ApiException unknownProgram(String code) {
+        return new ApiException(HttpStatus.BAD_REQUEST, "unknown_program",
+                "Parcours inconnu dans ce systeme : " + code);
+    }
+
+    public static ApiException unknownSemester(int semester, int semesterCount) {
+        return new ApiException(HttpStatus.BAD_REQUEST, "unknown_semester",
+                "Ce parcours compte " + semesterCount + " semestres, le " + semester
+                        + " n'existe pas.");
     }
 
     public static ApiException unknownSubjects(Object codes) {

@@ -37,22 +37,44 @@ public class ContentClient {
         this.restClient = contentRestClient;
     }
 
-    /** Reflet de la vue exposee par content-service. */
+    /**
+     * Reflet de la vue exposee par content-service.
+     *
+     * @param steps les choix que le cycle impose apres la classe. C'est ce champ
+     *        qui rend le parcours d'inscription independant des cycles : ce
+     *        service ne sait pas ce qu'est un lycee, il suit la sequence annoncee.
+     */
     public record LevelView(
             String code,
             String label,
             String cycle,
+            List<String> steps,
             int rank,
             int typicalAgeMin,
             int typicalAgeMax,
             boolean hasTracks,
             boolean suggested) {
+
+        public List<String> steps() {
+            return steps == null ? List.of() : steps;
+        }
     }
 
     public record TrackView(String code, String label, String description) {
     }
 
     public record SubjectView(String code, String label, boolean core) {
+    }
+
+    public record LearningDomainView(String code, String label, String description) {
+    }
+
+    public record ProgramView(String code, String label, String degree, String faculty,
+            int semesterCount) {
+    }
+
+    public record CourseUnitView(String code, String label, int semester, int credits,
+            boolean mandatory) {
     }
 
     /**
@@ -95,6 +117,50 @@ public class ContentClient {
                     throw translate(response.getStatusCode(), "Le systeme " + systemCode);
                 })
                 .body(new ParameterizedTypeReference<List<SubjectView>>() {
+                }));
+    }
+
+    // ------------------------------------------------------------------
+    // Cycles a vocabulaire propre
+    // ------------------------------------------------------------------
+
+    /** Maternelle et CP. */
+    public List<LearningDomainView> learningDomainsFor(String systemCode, String levelCode) {
+        return call(() -> restClient.get()
+                .uri("/api/v1/reference/earlyyears/systems/{system}/levels/{level}/domains",
+                        systemCode, levelCode)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> {
+                    throw translate(response.getStatusCode(), "Le niveau " + levelCode);
+                })
+                .body(new ParameterizedTypeReference<List<LearningDomainView>>() {
+                }));
+    }
+
+    /** Superieur. */
+    public List<ProgramView> programsFor(String systemCode) {
+        return call(() -> restClient.get()
+                .uri("/api/v1/reference/university/systems/{system}/programs", systemCode)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> {
+                    throw translate(response.getStatusCode(), "Le systeme " + systemCode);
+                })
+                .body(new ParameterizedTypeReference<List<ProgramView>>() {
+                }));
+    }
+
+    public List<CourseUnitView> courseUnitsFor(String systemCode, String programCode,
+            Integer semester) {
+        return call(() -> restClient.get()
+                .uri(builder -> builder
+                        .path("/api/v1/reference/university/systems/{system}/programs/{program}/units")
+                        .queryParamIfPresent("semester", java.util.Optional.ofNullable(semester))
+                        .build(systemCode, programCode))
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> {
+                    throw translate(response.getStatusCode(), "Le parcours " + programCode);
+                })
+                .body(new ParameterizedTypeReference<List<CourseUnitView>>() {
                 }));
     }
 

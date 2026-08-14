@@ -68,20 +68,24 @@ public class OnboardingService {
     }
 
     /**
-     * Seule la filiere est conditionnelle : elle ne se pose que pour les niveaux
-     * qui s'y pretent. Tant que le niveau n'est pas choisi, l'etape reste affichee
-     * pour que l'eleve voie le parcours complet devant lui.
+     * Les etapes dependantes du cycle ne s'affichent que si le cycle les demande.
      *
-     * <p>L'information vient du profil, ou elle a ete recopiee au moment du choix
-     * du niveau — pas d'un appel a content-service.
+     * <p>Un enfant de maternelle ne voit ni filiere ni matieres, mais des domaines
+     * d'apprentissage ; un etudiant voit parcours, semestre et unites
+     * d'enseignement. Ce service ne sait rien de tout cela : la sequence a ete
+     * recopiee sur le profil au moment du choix de la classe, depuis
+     * content-service.
+     *
+     * <p>Tant que la classe n'est pas choisie, ces etapes restent affichees pour
+     * que l'eleve voie le parcours devant lui — elles se preciseront ensuite.
      */
     private boolean isApplicable(OnboardingStep step, StudentProfile profile) {
-        if (step != OnboardingStep.TRACK) {
+        if (!step.cycleDependent()) {
             return true;
         }
         if (profile.getLevelCode() == null) {
             return true;
         }
-        return profile.isLevelHasTracks();
+        return profile.requires(step);
     }
 }

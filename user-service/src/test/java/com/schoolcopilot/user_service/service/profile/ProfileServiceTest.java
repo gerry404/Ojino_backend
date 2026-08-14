@@ -141,7 +141,7 @@ class ProfileServiceTest {
 
         assertThatThrownBy(() -> profiles.updateTrack(USER, "D"))
                 .isInstanceOf(ApiException.class)
-                .hasFieldOrPropertyWithValue("code", "track_not_applicable");
+                .hasFieldOrPropertyWithValue("code", "step_not_applicable");
     }
 
     @Test
@@ -157,12 +157,96 @@ class ProfileServiceTest {
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("l'existence d'une filiere pour ce niveau est recopiee depuis le referentiel")
-    void levelHasTracksIsCopiedFromContent() {
-        assertThat(profiles.updateLevel(USER, TestFixtures.SYSTEM, "TLE").isLevelHasTracks())
-                .isTrue();
-        assertThat(profiles.updateLevel(USER, TestFixtures.SYSTEM, "5E").isLevelHasTracks())
-                .isFalse();
+    @DisplayName("la sequence d'etapes du cycle est recopiee depuis le referentiel")
+    void curriculumStepsAreCopiedFromContent() {
+        assertThat(profiles.updateLevel(USER, TestFixtures.SYSTEM, "TLE").getCurriculumSteps())
+                .containsExactlyInAnyOrder(OnboardingStep.TRACK, OnboardingStep.SUBJECTS);
+
+        assertThat(profiles.updateLevel(USER, TestFixtures.SYSTEM, "5E").getCurriculumSteps())
+                .containsExactly(OnboardingStep.SUBJECTS);
+
+        assertThat(profiles.updateLevel(USER, TestFixtures.SYSTEM, "GS").getCurriculumSteps())
+                .containsExactly(OnboardingStep.LEARNING_DOMAINS);
+
+        assertThat(profiles.updateLevel(USER, TestFixtures.SYSTEM, "L1").getCurriculumSteps())
+                .containsExactlyInAnyOrder(OnboardingStep.PROGRAM, OnboardingStep.SEMESTER,
+                        OnboardingStep.COURSE_UNITS);
+    }
+
+    // ------------------------------------------------------------------
+    // Parcours par cycle
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("un enfant de maternelle choisit des domaines, jamais des matieres")
+    void preschoolerPicksLearningDomains() {
+        profiles.updateIdentity(USER, "Awa", "Ndiaye", LocalDate.now().minusYears(5));
+        profiles.skipPhoto(USER);
+        profiles.updateLevel(USER, TestFixtures.SYSTEM, "GS");
+
+        StudentProfile profile = profiles.updateLearningDomains(USER, List.of("LANGAGE"));
+        assertThat(profile.getLearningDomainCodes()).containsExactly("LANGAGE");
+
+        // Une matiere de lycee ne doit pas pouvoir lui etre attribuee par un appel
+        // direct a l'API.
+        assertThatThrownBy(() -> profiles.updateSubjects(USER, List.of("MATH")))
+                .isInstanceOf(ApiException.class)
+                .hasFieldOrPropertyWithValue("code", "step_not_applicable");
+    }
+
+    @Test
+    @DisplayName("un lyceen ne peut pas se voir attribuer des domaines d'apprentissage")
+    void highSchoolerCannotPickLearningDomains() {
+        profiles.updateIdentity(USER, "Paul", "Martin", LocalDate.now().minusYears(17));
+        profiles.updateLevel(USER, TestFixtures.SYSTEM, "TLE");
+
+        assertThatThrownBy(() -> profiles.updateLearningDomains(USER, List.of("LANGAGE")))
+                .isInstanceOf(ApiException.class)
+                .hasFieldOrPropertyWithValue("code", "step_not_applicable");
+    }
+
+    @Test
+    @DisplayName("un etudiant enchaine parcours, semestre puis unites d'enseignement")
+    void studentPicksProgramThenUnits() {
+        profiles.updateIdentity(USER, "Awa", "Ndiaye", LocalDate.now().minusYears(19));
+        profiles.updateLevel(USER, TestFixtures.SYSTEM, "L1");
+
+        profiles.updateProgram(USER, "INFO-L");
+        profiles.updateSemester(USER, 1);
+        StudentProfile profile = profiles.updateCourseUnits(USER, List.of("ALGO1", "MATH1"));
+
+        assertThat(profile.getProgramCode()).isEqualTo("INFO-L");
+        assertThat(profile.getSemester()).isEqualTo(1);
+        assertThat(profile.getCourseUnitCodes()).containsExactly("ALGO1", "MATH1");
+    }
+
+    @Test
+    @DisplayName("un semestre hors de la duree du parcours est refuse")
+    void semesterBeyondProgramIsRejected() {
+        profiles.updateIdentity(USER, "Awa", "Ndiaye", LocalDate.now().minusYears(19));
+        profiles.updateLevel(USER, TestFixtures.SYSTEM, "L1");
+        profiles.updateProgram(USER, "INFO-L");
+
+        // La licence compte six semestres.
+        assertThatThrownBy(() -> profiles.updateSemester(USER, 9))
+                .isInstanceOf(ApiException.class)
+                .hasFieldOrPropertyWithValue("code", "unknown_semester");
+    }
+
+    @Test
+    @DisplayName("changer de cycle efface tout ce qui dependait du precedent")
+    void changingCycleClearsEverythingCycleBound() {
+        completeUpTo(OnboardingStep.DIFFICULTIES);
+        assertThat(stored.get(USER).getSubjectCodes()).isNotEmpty();
+
+        StudentProfile profile = profiles.updateLevel(USER, TestFixtures.SYSTEM, "GS");
+
+        assertThat(profile.getSubjectCodes()).isEmpty();
+        assertThat(profile.getTrackCode()).isNull();
+        assertThat(profile.getDifficulties()).isEmpty();
+        assertThat(profile.hasCompleted(OnboardingStep.SUBJECTS)).isFalse();
+        assertThat(onboarding.stateOf(profile).nextStep())
+                .isEqualTo(OnboardingStep.LEARNING_DOMAINS);
     }
 
     @Test

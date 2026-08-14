@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -98,22 +99,12 @@ public class ProfileService {
         profile.setLevelCode(levelCode);
         // Recopie ici pour que la lecture de l'etat du parcours n'ait plus jamais
         // besoin d'interroger content-service.
-        profile.setLevelHasTracks(level.hasTracks());
+        profile.setCurriculumSteps(toSteps(level.steps()));
 
         if (levelChanged) {
-            // Filiere, matieres et difficultes dependent du niveau : les garder apres
-            // un changement laisserait un profil incoherent, du type Terminale D avec
-            // des matieres de 5e.
-            profile.setTrackCode(null);
-            profile.setSubjectCodes(new ArrayList<>());
-            profile.setDifficulties(new ArrayList<>());
-            profile.getCompletedSteps().remove(OnboardingStep.TRACK);
-            profile.getCompletedSteps().remove(OnboardingStep.SUBJECTS);
-            profile.getCompletedSteps().remove(OnboardingStep.DIFFICULTIES);
-        }
-
-        if (!level.hasTracks()) {
-            profile.setTrackCode(null);
+            // Tout ce qui depend du cycle devient caduc. Garder des matieres de
+            // Terminale sur un profil de maternelle produirait un profil incoherent.
+            profile.clearCurriculumChoices();
         }
 
         profile.markCompleted(OnboardingStep.LEVEL);
@@ -121,12 +112,7 @@ public class ProfileService {
     }
 
     public StudentProfile updateTrack(String userId, String trackCode) {
-        StudentProfile profile = getOrCreate(userId);
-        requireLevelChosen(profile, OnboardingStep.TRACK);
-
-        if (!profile.isLevelHasTracks()) {
-            throw ApiException.trackNotApplicable(profile.getLevelCode());
-        }
+        StudentProfile profile = requireStep(userId, OnboardingStep.TRACK);
 
         List<String> available = content
                 .tracksFor(profile.getSystemCode(), profile.getLevelCode()).stream()
@@ -150,13 +136,7 @@ public class ProfileService {
     }
 
     public StudentProfile updateSubjects(String userId, List<String> subjectCodes) {
-        StudentProfile profile = getOrCreate(userId);
-        requireLevelChosen(profile, OnboardingStep.SUBJECTS);
-
-        if (subjectCodes == null || subjectCodes.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "no_subjects", "Choisissez au moins une matiere.");
-        }
+        StudentProfile profile = requireStep(userId, OnboardingStep.SUBJECTS);
 
         Set<String> allowed = content
                 .subjectsFor(profile.getSystemCode(), profile.getLevelCode(), profile.getTrackCode())
@@ -164,20 +144,101 @@ public class ProfileService {
                 .map(ContentClient.SubjectView::code)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 
-        Set<String> unknown = new LinkedHashSet<>(subjectCodes);
-        unknown.removeAll(allowed);
-        if (!unknown.isEmpty()) {
-            throw ApiException.unknownSubjects(unknown);
-        }
-
-        List<String> validated = List.copyOf(new LinkedHashSet<>(subjectCodes));
+        List<String> validated = validateSelection(subjectCodes, allowed, "matiere");
         profile.setSubjectCodes(new ArrayList<>(validated));
-
-        // Une difficulte sur une matiere qu'on ne suit plus n'a plus de sens.
-        profile.getDifficulties().removeIf(
-                difficulty -> !validated.contains(difficulty.subjectCode()));
+        dropOrphanDifficulties(profile);
 
         profile.markCompleted(OnboardingStep.SUBJECTS);
+        return save(profile);
+    }
+
+    /** Maternelle et CP : a la place des matieres. */
+    public StudentProfile updateLearningDomains(String userId, List<String> domainCodes) {
+        StudentProfile profile = requireStep(userId, OnboardingStep.LEARNING_DOMAINS);
+
+        Set<String> allowed = content
+                .learningDomainsFor(profile.getSystemCode(), profile.getLevelCode()).stream()
+                .map(ContentClient.LearningDomainView::code)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+
+        List<String> validated = validateSelection(domainCodes, allowed, "domaine");
+        profile.setLearningDomainCodes(new ArrayList<>(validated));
+        dropOrphanDifficulties(profile);
+
+        profile.markCompleted(OnboardingStep.LEARNING_DOMAINS);
+        return save(profile);
+    }
+
+    /** Superieur : le parcours suivi. */
+    public StudentProfile updateProgram(String userId, String programCode) {
+        StudentProfile profile = requireStep(userId, OnboardingStep.PROGRAM);
+
+        boolean known = content.programsFor(profile.getSystemCode()).stream()
+                .anyMatch(program -> program.code().equals(programCode));
+        if (!known) {
+            throw ApiException.unknownProgram(programCode);
+        }
+
+        if (!Objects.equals(profile.getProgramCode(), programCode)) {
+            // Semestre et unites d'enseignement appartiennent au parcours.
+            profile.setSemester(null);
+            profile.setCourseUnitCodes(new ArrayList<>());
+            profile.getCompletedSteps().remove(OnboardingStep.SEMESTER);
+            profile.getCompletedSteps().remove(OnboardingStep.COURSE_UNITS);
+            profile.getCompletedSteps().remove(OnboardingStep.DIFFICULTIES);
+        }
+
+        profile.setProgramCode(programCode);
+        profile.markCompleted(OnboardingStep.PROGRAM);
+        return save(profile);
+    }
+
+    public StudentProfile updateSemester(String userId, int semester) {
+        StudentProfile profile = requireStep(userId, OnboardingStep.SEMESTER);
+
+        if (profile.getProgramCode() == null) {
+            throw ApiException.stepOutOfOrder("SEMESTER", "le parcours");
+        }
+        int semesterCount = content.programsFor(profile.getSystemCode()).stream()
+                .filter(program -> program.code().equals(profile.getProgramCode()))
+                .findFirst()
+                .map(ContentClient.ProgramView::semesterCount)
+                .orElseThrow(() -> ApiException.unknownProgram(profile.getProgramCode()));
+
+        if (semester < 1 || semester > semesterCount) {
+            throw ApiException.unknownSemester(semester, semesterCount);
+        }
+
+        if (!Objects.equals(profile.getSemester(), semester)) {
+            profile.setCourseUnitCodes(new ArrayList<>());
+            profile.getCompletedSteps().remove(OnboardingStep.COURSE_UNITS);
+            profile.getCompletedSteps().remove(OnboardingStep.DIFFICULTIES);
+        }
+
+        profile.setSemester(semester);
+        profile.markCompleted(OnboardingStep.SEMESTER);
+        return save(profile);
+    }
+
+    public StudentProfile updateCourseUnits(String userId, List<String> unitCodes) {
+        StudentProfile profile = requireStep(userId, OnboardingStep.COURSE_UNITS);
+
+        if (profile.getProgramCode() == null) {
+            throw ApiException.stepOutOfOrder("COURSE_UNITS", "le parcours");
+        }
+
+        Set<String> allowed = content
+                .courseUnitsFor(profile.getSystemCode(), profile.getProgramCode(),
+                        profile.getSemester())
+                .stream()
+                .map(ContentClient.CourseUnitView::code)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+
+        List<String> validated = validateSelection(unitCodes, allowed, "unite d'enseignement");
+        profile.setCourseUnitCodes(new ArrayList<>(validated));
+        dropOrphanDifficulties(profile);
+
+        profile.markCompleted(OnboardingStep.COURSE_UNITS);
         return save(profile);
     }
 
@@ -194,8 +255,8 @@ public class ProfileService {
     public StudentProfile updateDifficulties(String userId, List<Difficulty> difficulties) {
         StudentProfile profile = getOrCreate(userId);
 
-        if (!profile.hasCompleted(OnboardingStep.SUBJECTS)) {
-            throw ApiException.stepOutOfOrder("DIFFICULTIES", "les matieres");
+        if (profile.studiedCodes().isEmpty()) {
+            throw ApiException.stepOutOfOrder("DIFFICULTIES", "ce que vous etudiez");
         }
 
         List<Difficulty> cleaned = difficulties == null ? List.of() : difficulties;
@@ -204,9 +265,12 @@ public class ProfileService {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_difficulty",
                         "Chaque difficulte demande une matiere et une intensite de 1 a 3.");
             }
-            if (!profile.getSubjectCodes().contains(difficulty.subjectCode())) {
+            // studiedCodes() couvre matieres, domaines et unites d'enseignement :
+            // une difficulte se declare sur ce qu'on etudie, quel que soit le nom
+            // que le cycle lui donne.
+            if (!profile.studiedCodes().contains(difficulty.subjectCode())) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "difficulty_on_unknown_subject",
-                        "La matiere " + difficulty.subjectCode() + " ne fait pas partie de vos matieres.");
+                        "L'element " + difficulty.subjectCode() + " ne fait pas partie de ce que vous etudiez.");
             }
         });
 
@@ -260,10 +324,65 @@ public class ProfileService {
         }
     }
 
-    private void requireLevelChosen(StudentProfile profile, OnboardingStep step) {
+    /**
+     * Charge le profil et verifie que cette etape concerne bien son cycle.
+     *
+     * <p>Sans ce controle, un enfant de maternelle pourrait se voir attribuer une
+     * filiere de Terminale par un appel direct a l'API.
+     */
+    private StudentProfile requireStep(String userId, OnboardingStep step) {
+        StudentProfile profile = getOrCreate(userId);
+
         if (profile.getSystemCode() == null || profile.getLevelCode() == null) {
             throw ApiException.stepOutOfOrder(step.name(), "le niveau scolaire");
         }
+        if (!profile.requires(step)) {
+            throw ApiException.stepNotApplicable(step.name(), profile.getLevelCode());
+        }
+        return profile;
+    }
+
+    /**
+     * Traduit ce que content-service annonce en etapes locales.
+     *
+     * <p>Une etape inconnue est ignoree plutot que de faire echouer l'appel : un
+     * content-service plus recent peut en annoncer que cette version ne sait pas
+     * encore traiter, et cela ne doit pas bloquer une inscription.
+     */
+    private Set<OnboardingStep> toSteps(List<String> declared) {
+        return declared.stream()
+                .map(name -> {
+                    try {
+                        return OnboardingStep.valueOf(name);
+                    } catch (IllegalArgumentException unknown) {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .filter(OnboardingStep::cycleDependent)
+                .collect(java.util.stream.Collectors.toCollection(
+                        () -> EnumSet.noneOf(OnboardingStep.class)));
+    }
+
+    /** Selection non vide, sans doublon, et dont chaque code est propose. */
+    private List<String> validateSelection(List<String> chosen, Set<String> allowed, String label) {
+        if (chosen == null || chosen.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "empty_selection",
+                    "Choisissez au moins un element de type " + label + ".");
+        }
+        Set<String> unknown = new LinkedHashSet<>(chosen);
+        unknown.removeAll(allowed);
+        if (!unknown.isEmpty()) {
+            throw ApiException.unknownSubjects(unknown);
+        }
+        return List.copyOf(new LinkedHashSet<>(chosen));
+    }
+
+    /** Une difficulte sur quelque chose qu'on n'etudie plus n'a plus de sens. */
+    private void dropOrphanDifficulties(StudentProfile profile) {
+        List<String> studied = profile.studiedCodes();
+        profile.getDifficulties().removeIf(
+                difficulty -> !studied.contains(difficulty.subjectCode()));
     }
 
     private StudentProfile save(StudentProfile profile) {

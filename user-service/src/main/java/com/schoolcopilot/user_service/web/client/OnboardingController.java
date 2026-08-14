@@ -13,6 +13,9 @@ import com.schoolcopilot.user_service.domain.profile.StudentProfile;
 import com.schoolcopilot.user_service.service.profile.OnboardingService;
 import com.schoolcopilot.user_service.service.profile.ProfileService;
 import com.schoolcopilot.user_service.web.client.dto.AvailabilityRequest;
+import com.schoolcopilot.user_service.web.client.dto.CodeListRequest;
+import com.schoolcopilot.user_service.web.client.dto.ProgramRequest;
+import com.schoolcopilot.user_service.web.client.dto.SemesterRequest;
 import com.schoolcopilot.user_service.web.client.dto.DifficultiesRequest;
 import com.schoolcopilot.user_service.web.client.dto.GoalRequest;
 import com.schoolcopilot.user_service.web.client.dto.IdentityRequest;
@@ -90,6 +93,32 @@ public class OnboardingController {
     public OnboardingStateResponse subjects(@AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody SubjectsRequest request) {
         return respond(profiles.updateSubjects(jwt.getSubject(), request.subjectCodes()));
+    }
+
+    /** Maternelle et CP : a la place des matieres. */
+    @PutMapping("/learning-domains")
+    public OnboardingStateResponse learningDomains(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody CodeListRequest request) {
+        return respond(profiles.updateLearningDomains(jwt.getSubject(), request.codes()));
+    }
+
+    /** Superieur : le parcours suivi. */
+    @PutMapping("/program")
+    public OnboardingStateResponse program(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody ProgramRequest request) {
+        return respond(profiles.updateProgram(jwt.getSubject(), request.programCode()));
+    }
+
+    @PutMapping("/semester")
+    public OnboardingStateResponse semester(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody SemesterRequest request) {
+        return respond(profiles.updateSemester(jwt.getSubject(), request.semester()));
+    }
+
+    @PutMapping("/course-units")
+    public OnboardingStateResponse courseUnits(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody CodeListRequest request) {
+        return respond(profiles.updateCourseUnits(jwt.getSubject(), request.codes()));
     }
 
     @PutMapping("/goal")

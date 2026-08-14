@@ -43,19 +43,29 @@ public class StudentProfile {
     private String trackCode;
 
     /**
-     * Recopie depuis le referentiel au moment ou le niveau est choisi.
+     * Les etapes que le cycle de la classe choisie impose, recopiees depuis
+     * content-service au moment du choix.
      *
-     * <p>C'est ce qui permet a l'etat du parcours d'inscription — lu a chaque
-     * ouverture de l'application — de se calculer sans le moindre appel a
-     * content-service. La consultation reste donc rapide, et fonctionne meme si
-     * content-service est indisponible.
+     * <p>C'est ce qui permet a l'etat du parcours — lu a chaque ouverture de
+     * l'application — de se calculer sans le moindre appel reseau. La consultation
+     * reste rapide et fonctionne meme si content-service est indisponible.
      *
-     * <p>Contrepartie assumee : si un administrateur change {@code hasTracks} sur
-     * un niveau, les profils deja rattaches gardent l'ancienne valeur jusqu'a ce
-     * que leur niveau soit reconfirme. C'est un changement rare, et l'alternative
-     * — un appel reseau sur chaque lecture — coute bien plus cher.
+     * <p>Contrepartie assumee : si un administrateur modifie ce que demande un
+     * cycle, les profils deja rattaches gardent l'ancienne sequence jusqu'a ce que
+     * leur niveau soit reconfirme. C'est un changement rare, et l'alternative — un
+     * appel reseau sur chaque lecture — coute bien plus cher.
      */
-    private boolean levelHasTracks;
+    private Set<OnboardingStep> curriculumSteps = EnumSet.noneOf(OnboardingStep.class);
+
+    /** Maternelle et CP : a la place des matieres. */
+    private List<String> learningDomainCodes = new ArrayList<>();
+
+    /** Superieur : parcours, semestre en cours et unites d'enseignement suivies. */
+    private String programCode;
+
+    private Integer semester;
+
+    private List<String> courseUnitCodes = new ArrayList<>();
 
     private List<String> subjectCodes = new ArrayList<>();
 
@@ -97,6 +107,26 @@ public class StudentProfile {
 
     public void markCompleted(OnboardingStep step) {
         completedSteps.add(step);
+    }
+
+    /**
+     * Vide toutes les selections dependantes du cycle et rouvre les etapes
+     * correspondantes. Appele quand le niveau change : garder des matieres de
+     * Terminale sur un profil de maternelle produirait un profil incoherent.
+     */
+    public void clearCurriculumChoices() {
+        trackCode = null;
+        subjectCodes = new ArrayList<>();
+        learningDomainCodes = new ArrayList<>();
+        programCode = null;
+        semester = null;
+        courseUnitCodes = new ArrayList<>();
+        difficulties = new ArrayList<>();
+
+        OnboardingStep.ordered().stream()
+                .filter(OnboardingStep::cycleDependent)
+                .forEach(completedSteps::remove);
+        completedSteps.remove(OnboardingStep.DIFFICULTIES);
     }
 
     public boolean hasCompleted(OnboardingStep step) {
@@ -181,12 +211,63 @@ public class StudentProfile {
         this.trackCode = trackCode;
     }
 
-    public boolean isLevelHasTracks() {
-        return levelHasTracks;
+    public Set<OnboardingStep> getCurriculumSteps() {
+        return curriculumSteps;
     }
 
-    public void setLevelHasTracks(boolean levelHasTracks) {
-        this.levelHasTracks = levelHasTracks;
+    public void setCurriculumSteps(Set<OnboardingStep> curriculumSteps) {
+        this.curriculumSteps = curriculumSteps;
+    }
+
+    public boolean requires(OnboardingStep step) {
+        return curriculumSteps.contains(step);
+    }
+
+    public List<String> getLearningDomainCodes() {
+        return learningDomainCodes;
+    }
+
+    public void setLearningDomainCodes(List<String> learningDomainCodes) {
+        this.learningDomainCodes = learningDomainCodes;
+    }
+
+    public String getProgramCode() {
+        return programCode;
+    }
+
+    public void setProgramCode(String programCode) {
+        this.programCode = programCode;
+    }
+
+    public Integer getSemester() {
+        return semester;
+    }
+
+    public void setSemester(Integer semester) {
+        this.semester = semester;
+    }
+
+    public List<String> getCourseUnitCodes() {
+        return courseUnitCodes;
+    }
+
+    public void setCourseUnitCodes(List<String> courseUnitCodes) {
+        this.courseUnitCodes = courseUnitCodes;
+    }
+
+    /**
+     * Ce que l'eleve etudie, quel que soit son cycle : matieres, domaines
+     * d'apprentissage ou unites d'enseignement.
+     *
+     * <p>Sert aux etapes qui s'appliquent a tous les cycles — les difficultes, par
+     * exemple, se declarent sur ce qu'on etudie, sans avoir a savoir comment cela
+     * s'appelle dans ce cycle.
+     */
+    public List<String> studiedCodes() {
+        List<String> codes = new ArrayList<>(subjectCodes);
+        codes.addAll(learningDomainCodes);
+        codes.addAll(courseUnitCodes);
+        return codes;
     }
 
     public List<String> getSubjectCodes() {

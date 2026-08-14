@@ -37,15 +37,36 @@ public final class TestFixtures {
         when(content.subjectsFor(anyString(), anyString(), any()))
                 .thenAnswer(invocation -> subjectsFor(invocation.getArgument(1)));
 
+        when(content.learningDomainsFor(anyString(), anyString())).thenReturn(List.of(
+                new ContentClient.LearningDomainView("LANGAGE", "Mobiliser le langage", null),
+                new ContentClient.LearningDomainView("PENSEE", "Structurer sa pensee", null)));
+
+        when(content.programsFor(anyString())).thenReturn(List.of(
+                new ContentClient.ProgramView("INFO-L", "Licence informatique", "LICENCE",
+                        "Sciences", 6)));
+
+        when(content.courseUnitsFor(anyString(), anyString(), any())).thenReturn(List.of(
+                new ContentClient.CourseUnitView("ALGO1", "Algorithmique 1", 1, 6, true),
+                new ContentClient.CourseUnitView("MATH1", "Mathematiques 1", 1, 6, true)));
+
         return content;
     }
 
-    /** 5e n'a pas de filiere ; Terminale en a. */
+    /**
+     * Un niveau par cycle, chacun avec la sequence que content-service annonce :
+     * le college demande des matieres, le lycee filiere puis matieres, la
+     * maternelle des domaines, le superieur parcours, semestre et unites.
+     */
     private static ContentClient.LevelView level(String code) {
         return switch (code) {
-            case "5E" -> new ContentClient.LevelView("5E", "5e", "COLLEGE", 2, 12, 13, false, false);
-            case "2NDE" -> new ContentClient.LevelView("2NDE", "Seconde", "LYCEE", 5, 15, 16, true, false);
-            case "TLE" -> new ContentClient.LevelView("TLE", "Terminale", "LYCEE", 7, 17, 19, true, false);
+            case "GS" -> new ContentClient.LevelView("GS", "Grande section", "EARLY_YEARS",
+                    List.of("LEARNING_DOMAINS"), 3, 5, 6, false, false);
+            case "5E" -> new ContentClient.LevelView("5E", "5e", "COLLEGE",
+                    List.of("SUBJECTS"), 11, 12, 13, false, false);
+            case "TLE" -> new ContentClient.LevelView("TLE", "Terminale", "HIGH_SCHOOL",
+                    List.of("TRACK", "SUBJECTS"), 22, 17, 19, true, false);
+            case "L1" -> new ContentClient.LevelView("L1", "Licence 1", "UNIVERSITY",
+                    List.of("PROGRAM", "SEMESTER", "COURSE_UNITS"), 30, 18, 25, false, false);
             default -> throw new ApiException(org.springframework.http.HttpStatus.BAD_REQUEST,
                     "unknown_reference", "Le niveau " + code + " est inconnu du referentiel.");
         };
