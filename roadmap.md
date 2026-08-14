@@ -56,7 +56,9 @@ back-office.
 C'est le service le plus structurant du projet. Tout ce qui suit s'y accroche.
 
 1. ✅ **Migrer le référentiel** (systèmes, niveaux, filières, matières) depuis `user-service`
-2. **Chapitre** — rattaché à système + niveau + matière (+ filière si applicable), ordonné
+2. ✅ **Un module Maven par cycle** — maternelle→CP, collège, lycée, prépa, université,
+   avec le contrat `CurriculumModule` qui dit ce que chaque cycle demande à l'élève
+3. **Chapitre** — rattaché à système + niveau + matière (+ filière si applicable), ordonné
 3. **Notion** — le grain fin : « les limites », « l'accord du participe passé »
 4. **Graphe de prérequis** entre notions
 5. **Ressource** — leçon, fiche, vidéo, lien externe
@@ -253,7 +255,8 @@ fin — ça se conçoit dès le départ, et ça se teste.
 | Avant #4 | Une base par service ou partagée | Une par service — c'est déjà le cas (`ojino_auth`, `ojino_user`) |
 | Avant #8 | Secret partagé HS256 ou RS256 + JWKS | Passer à RS256 : à cinq services et plus, un secret symétrique qui fuit compromet tout |
 | Avant #8 | Où vivent les quotas IA | Dans `assistant-service`, jamais dans `ai-service` — la règle métier reste côté Spring |
-| Avant le déploiement | Docker, compose, observabilité | À traiter d'un bloc, une fois les services Spring terminés |
+| ~~Avant le déploiement~~ | ~~MongoDB local~~ | ✅ **Fait** — `docker compose up -d`, un utilisateur par service, Actuator |
+| Avant le déploiement | Reste de l'outillage : conteneurs des services, observabilité, CI | À traiter d'un bloc, une fois les services Spring terminés |
 
 ---
 
