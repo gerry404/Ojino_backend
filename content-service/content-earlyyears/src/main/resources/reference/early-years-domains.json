@@ -1,0 +1,19 @@
+{
+  "systems": [
+    {
+      "systemCode": "CM-FR",
+      "domains": [
+        { "code": "LANGAGE",        "label": "Mobiliser le langage",                 "description": "Oral et entrée dans l'écrit",                     "levelCodes": [], "displayOrder": 1 },
+        { "code": "PENSEE",         "label": "Structurer sa pensée",                 "description": "Premiers nombres, formes, grandeurs, suites",     "levelCodes": [], "displayOrder": 2 },
+        { "code": "MONDE",          "label": "Explorer le monde",                    "description": "Temps, espace, vivant, objets, matière",          "levelCodes": [], "displayOrder": 3 },
+        { "code": "PHYSIQUE",       "label": "Activité physique",                    "description": "Se repérer, coordonner, coopérer",                "levelCodes": [], "displayOrder": 4 },
+        { "code": "ARTS",           "label": "Activités artistiques",                "description": "Dessin, chant, écoute, expression",               "levelCodes": [], "displayOrder": 5 },
+        { "code": "VIVRE_ENSEMBLE", "label": "Vivre ensemble",                       "description": "Règles, autonomie, coopération",                  "levelCodes": [], "displayOrder": 6 },
+
+        { "code": "LECTURE",        "label": "Lecture",                              "description": "Déchiffrage et compréhension de textes courts",   "levelCodes": ["CP"], "displayOrder": 10 },
+        { "code": "ECRITURE",       "label": "Écriture",                             "description": "Geste graphique, copie, premières productions",   "levelCodes": ["CP"], "displayOrder": 11 },
+        { "code": "CALCUL",         "label": "Calcul",                               "description": "Nombres jusqu'à 100, addition, soustraction",     "levelCodes": ["CP"], "displayOrder": 12 }
+      ]
+    }
+  ]
+}
