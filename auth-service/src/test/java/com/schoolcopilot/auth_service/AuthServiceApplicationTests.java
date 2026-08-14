@@ -11,7 +11,7 @@ import com.schoolcopilot.auth_service.repository.OtpChallengeRepository;
 import com.schoolcopilot.auth_service.repository.RefreshTokenRepository;
 import com.schoolcopilot.auth_service.repository.UserRepository;
 import com.schoolcopilot.auth_service.service.AuthService;
-import com.schoolcopilot.auth_service.web.AuthController;
+import com.schoolcopilot.auth_service.web.client.AuthController;
 
 /**
  * Verifie que tout le contexte se cable : securite, encodage des JWT, providers

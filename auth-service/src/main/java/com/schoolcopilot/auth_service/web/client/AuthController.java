@@ -1,4 +1,4 @@
-package com.schoolcopilot.auth_service.web;
+package com.schoolcopilot.auth_service.web.client;
 
 import java.util.Map;
 
@@ -21,15 +21,15 @@ import com.schoolcopilot.auth_service.otp.OtpService;
 import com.schoolcopilot.auth_service.security.TokenService;
 import com.schoolcopilot.auth_service.security.TokenService.DeviceContext;
 import com.schoolcopilot.auth_service.service.AuthService;
-import com.schoolcopilot.auth_service.web.dto.AuthResponse;
-import com.schoolcopilot.auth_service.web.dto.LoginRequest;
-import com.schoolcopilot.auth_service.web.dto.OtpChallengeResponse;
-import com.schoolcopilot.auth_service.web.dto.PhoneStartRequest;
-import com.schoolcopilot.auth_service.web.dto.PhoneVerifyRequest;
-import com.schoolcopilot.auth_service.web.dto.RefreshRequest;
-import com.schoolcopilot.auth_service.web.dto.RegisterRequest;
-import com.schoolcopilot.auth_service.web.dto.SocialLoginRequest;
-import com.schoolcopilot.auth_service.web.dto.UserResponse;
+import com.schoolcopilot.auth_service.web.client.dto.AuthResponse;
+import com.schoolcopilot.auth_service.web.client.dto.LoginRequest;
+import com.schoolcopilot.auth_service.web.client.dto.OtpChallengeResponse;
+import com.schoolcopilot.auth_service.web.client.dto.PhoneStartRequest;
+import com.schoolcopilot.auth_service.web.client.dto.PhoneVerifyRequest;
+import com.schoolcopilot.auth_service.web.client.dto.RefreshRequest;
+import com.schoolcopilot.auth_service.web.client.dto.RegisterRequest;
+import com.schoolcopilot.auth_service.web.client.dto.SocialLoginRequest;
+import com.schoolcopilot.auth_service.web.client.dto.UserResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;

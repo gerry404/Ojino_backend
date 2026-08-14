@@ -1,4 +1,4 @@
-package com.schoolcopilot.auth_service.web;
+package com.schoolcopilot.auth_service.web.client;
 
 import java.time.Duration;
 import java.util.Arrays;

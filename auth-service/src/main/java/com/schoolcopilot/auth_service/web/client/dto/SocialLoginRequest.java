@@ -1,4 +1,4 @@
-package com.schoolcopilot.auth_service.web.dto;
+package com.schoolcopilot.auth_service.web.client.dto;
 
 import com.schoolcopilot.auth_service.domain.AuthProvider;
 

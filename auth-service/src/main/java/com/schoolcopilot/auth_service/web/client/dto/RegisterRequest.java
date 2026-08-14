@@ -1,4 +1,4 @@
-package com.schoolcopilot.auth_service.web.dto;
+package com.schoolcopilot.auth_service.web.client.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
