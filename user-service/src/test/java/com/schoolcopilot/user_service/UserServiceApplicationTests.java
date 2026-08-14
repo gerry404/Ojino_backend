@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.schoolcopilot.user_service.repository.ReferenceRepositories;
@@ -30,6 +31,10 @@ class UserServiceApplicationTests {
 
     @MockitoBean
     StudentProfileRepository studentProfileRepository;
+
+    /** Le back-office l'utilise pour ses recherches a filtres facultatifs. */
+    @MockitoBean
+    MongoTemplate mongoTemplate;
 
     @MockitoBean
     ReferenceRepositories.EducationSystems educationSystems;
