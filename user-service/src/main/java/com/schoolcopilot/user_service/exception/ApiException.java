@@ -72,4 +72,33 @@ public class ApiException extends RuntimeException {
     public static ApiException invalidBirthDate(String detail) {
         return new ApiException(HttpStatus.BAD_REQUEST, "invalid_birth_date", detail);
     }
+
+    // ------------------------------------------------------------------
+    // Back-office du referentiel
+    // ------------------------------------------------------------------
+
+    public static ApiException alreadyExists(String kind, String code) {
+        return new ApiException(HttpStatus.CONFLICT, "already_exists",
+                kind + " " + code + " existe deja dans ce systeme.");
+    }
+
+    /**
+     * Refuse de supprimer un element encore utilise : les profils concernes
+     * pointeraient vers un code disparu, et rien ne les reparerait.
+     */
+    public static ApiException referenceInUse(String kind, String code, long profiles) {
+        return new ApiException(HttpStatus.CONFLICT, "reference_in_use",
+                kind + " " + code + " est utilise par " + profiles
+                        + " profil(s). Desactivez le systeme ou migrez ces profils d'abord.");
+    }
+
+    public static ApiException invalidAgeRange() {
+        return new ApiException(HttpStatus.BAD_REQUEST, "invalid_age_range",
+                "L'age minimum ne peut pas depasser l'age maximum.");
+    }
+
+    public static ApiException unknownLevelsReferenced(Object codes) {
+        return new ApiException(HttpStatus.BAD_REQUEST, "unknown_levels_referenced",
+                "Niveaux inconnus dans ce systeme : " + codes);
+    }
 }

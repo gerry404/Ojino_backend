@@ -45,5 +45,7 @@ public final class ReferenceRepositories {
     public interface Subjects extends MongoRepository<Subject, String> {
 
         List<Subject> findBySystemCodeOrderByDisplayOrderAsc(String systemCode);
+
+        Optional<Subject> findBySystemCodeAndCode(String systemCode, String code);
     }
 }
