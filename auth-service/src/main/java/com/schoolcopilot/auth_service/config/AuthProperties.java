@@ -16,7 +16,21 @@ public record AuthProperties(
         Otp otp,
         Social google,
         Social apple,
-        Cors cors) {
+        Cors cors,
+        List<String> adminEmails) {
+
+    /**
+     * Les comptes portant l'une de ces adresses recoivent le role {@code ADMIN} a
+     * la connexion.
+     *
+     * <p>Sans cela, personne ne pourrait jamais devenir administrateur : il faut
+     * deja etre admin pour appeler l'API qui promeut les autres. L'attribution est
+     * uniquement additive — retirer une adresse d'ici ne retire pas le role, cela
+     * se fait par l'API d'administration.
+     */
+    public List<String> adminEmails() {
+        return adminEmails == null ? List.of() : adminEmails;
+    }
 
     /** Signature des access tokens que nous emettons nous-memes. */
     public record Jwt(String secret, String issuer, Duration accessTokenTtl) {

@@ -59,7 +59,8 @@ class JwtServiceTest {
                 new AuthProperties.Jwt("un-tout-autre-secret-de-trente-deux-caracteres-mini",
                         properties.jwt().issuer(), properties.jwt().accessTokenTtl()),
                 properties.refresh(), properties.cookie(), properties.otp(),
-                properties.google(), properties.apple(), properties.cors());
+                properties.google(), properties.apple(), properties.cors(),
+                properties.adminEmails());
 
         assertThatThrownBy(() -> jwtConfig
                 .jwtDecoder(jwtConfig.accessTokenKey(other), other)
@@ -73,7 +74,8 @@ class JwtServiceTest {
         AuthProperties weak = new AuthProperties(
                 new AuthProperties.Jwt("trop-court", "ojino", properties.jwt().accessTokenTtl()),
                 properties.refresh(), properties.cookie(), properties.otp(),
-                properties.google(), properties.apple(), properties.cors());
+                properties.google(), properties.apple(), properties.cors(),
+                properties.adminEmails());
 
         assertThatThrownBy(() -> jwtConfig.accessTokenKey(weak))
                 .isInstanceOf(IllegalStateException.class)

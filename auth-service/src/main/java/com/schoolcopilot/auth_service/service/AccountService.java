@@ -11,7 +11,9 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.schoolcopilot.auth_service.config.AuthProperties;
 import com.schoolcopilot.auth_service.domain.AuthProvider;
+import com.schoolcopilot.auth_service.domain.Role;
 import com.schoolcopilot.auth_service.domain.User;
 import com.schoolcopilot.auth_service.exception.AuthException;
 import com.schoolcopilot.auth_service.repository.UserRepository;
@@ -29,14 +31,16 @@ import com.schoolcopilot.auth_service.social.SocialUser;
 public class AccountService {
 
     private static final Logger log = LoggerFactory.getLogger(AccountService.class);
-    private static final String DEFAULT_ROLE = "USER";
 
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
+    private final AuthProperties properties;
 
-    public AccountService(UserRepository users, PasswordEncoder passwordEncoder) {
+    public AccountService(UserRepository users, PasswordEncoder passwordEncoder,
+            AuthProperties properties) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
+        this.properties = properties;
     }
 
     /** Un compte, et l'information de savoir s'il vient d'etre cree (pour lancer l'onboarding). */
@@ -153,7 +157,26 @@ public class AccountService {
 
     public User touchLastLogin(User user) {
         user.setLastLoginAt(Instant.now());
+        grantConfiguredAdminRole(user);
         return save(user);
+    }
+
+    /**
+     * Amorcage des administrateurs : sans cela il faudrait deja etre admin pour le
+     * devenir. Volontairement additif — une adresse retiree de la configuration ne
+     * perd pas son role, cela passe par l'API d'administration.
+     */
+    private void grantConfiguredAdminRole(User user) {
+        if (user.getEmail() == null || user.getRoles().contains(Role.ADMIN)) {
+            return;
+        }
+        boolean configuredAsAdmin = properties.adminEmails().stream()
+                .map(email -> email.trim().toLowerCase(Locale.ROOT))
+                .anyMatch(email -> email.equals(user.getEmail()));
+        if (configuredAsAdmin) {
+            user.getRoles().add(Role.ADMIN);
+            log.info("Role ADMIN accorde au compte {} d'apres la configuration.", user.getId());
+        }
     }
 
     // ------------------------------------------------------------------
@@ -171,7 +194,7 @@ public class AccountService {
 
     private User newUser() {
         User user = new User();
-        user.setRoles(new java.util.LinkedHashSet<>(Set.of(DEFAULT_ROLE)));
+        user.setRoles(new java.util.LinkedHashSet<>(Set.of(Role.USER)));
         user.setCreatedAt(Instant.now());
         return user;
     }

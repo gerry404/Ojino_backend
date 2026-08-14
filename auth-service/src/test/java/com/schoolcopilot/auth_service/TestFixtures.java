@@ -25,7 +25,8 @@ public final class TestFixtures {
                 new AuthProperties.Otp(6, Duration.ofMinutes(5), 5, Duration.ofSeconds(60), true),
                 new AuthProperties.Social(List.of("google-client-id")),
                 new AuthProperties.Social(List.of("apple-client-id")),
-                new AuthProperties.Cors(List.of("http://localhost:3000")));
+                new AuthProperties.Cors(List.of("http://localhost:3000")),
+                List.of());
     }
 
     public static User user(String id) {

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,7 +18,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import com.schoolcopilot.auth_service.TestFixtures;
+import com.schoolcopilot.auth_service.config.AuthProperties;
 import com.schoolcopilot.auth_service.domain.AuthProvider;
+import com.schoolcopilot.auth_service.domain.Role;
 import com.schoolcopilot.auth_service.domain.User;
 import com.schoolcopilot.auth_service.exception.AuthException;
 import com.schoolcopilot.auth_service.repository.UserRepository;
@@ -64,7 +68,16 @@ class AccountServiceTest {
         when(users.findById(anyString())).thenAnswer(invocation ->
                 Optional.ofNullable(stored.get(invocation.getArgument(0))));
 
-        accounts = new AccountService(users, new BCryptPasswordEncoder());
+        accounts = new AccountService(users, new BCryptPasswordEncoder(),
+                TestFixtures.properties());
+    }
+
+    /** Variante configuree avec une adresse d'administrateur. */
+    private AccountService accountsWithAdminEmails(String... emails) {
+        AuthProperties base = TestFixtures.properties();
+        AuthProperties withAdmins = new AuthProperties(base.jwt(), base.refresh(), base.cookie(),
+                base.otp(), base.google(), base.apple(), base.cors(), List.of(emails));
+        return new AccountService(users, new BCryptPasswordEncoder(), withAdmins);
     }
 
     // ------------------------------------------------------------------
@@ -203,6 +216,55 @@ class AccountServiceTest {
                 google("google-sub-1", "paul@example.com", true), "Autre Nom");
 
         assertThat(linked.user().getDisplayName()).isEqualTo("Paul Martin");
+    }
+
+    // ------------------------------------------------------------------
+    // Roles
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("un compte ordinaire n'a que le role USER")
+    void newAccountsAreOrdinaryUsers() {
+        ResolvedAccount account = accounts.registerWithEmail("paul@example.com", "motdepasse1", "Paul");
+        accounts.touchLastLogin(account.user());
+
+        assertThat(account.user().getRoles()).containsExactly(Role.USER);
+    }
+
+    @Test
+    @DisplayName("une adresse listee en configuration recoit ADMIN a la connexion")
+    void configuredEmailBecomesAdmin() {
+        AccountService withAdmin = accountsWithAdminEmails("Admin@Example.com");
+        ResolvedAccount account =
+                withAdmin.registerWithEmail("admin@example.com", "motdepasse1", "Admin");
+
+        withAdmin.touchLastLogin(account.user());
+
+        // La comparaison ignore la casse : la configuration est saisie a la main.
+        assertThat(account.user().getRoles()).contains(Role.USER, Role.ADMIN);
+    }
+
+    @Test
+    @DisplayName("une adresse absente de la configuration ne recoit rien")
+    void otherEmailsStayOrdinary() {
+        AccountService withAdmin = accountsWithAdminEmails("admin@example.com");
+        ResolvedAccount account =
+                withAdmin.registerWithEmail("paul@example.com", "motdepasse1", "Paul");
+
+        withAdmin.touchLastLogin(account.user());
+
+        assertThat(account.user().getRoles()).doesNotContain(Role.ADMIN);
+    }
+
+    @Test
+    @DisplayName("un compte sans email ne declenche jamais l'amorcage admin")
+    void accountsWithoutEmailAreNeverPromoted() {
+        AccountService withAdmin = accountsWithAdminEmails("admin@example.com");
+        ResolvedAccount account = withAdmin.resolveByPhone("+237690000000");
+
+        withAdmin.touchLastLogin(account.user());
+
+        assertThat(account.user().getRoles()).doesNotContain(Role.ADMIN);
     }
 
     // ------------------------------------------------------------------

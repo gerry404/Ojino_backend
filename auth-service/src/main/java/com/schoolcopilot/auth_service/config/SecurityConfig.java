@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -17,8 +18,11 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.schoolcopilot.auth_service.domain.Role;
+
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -39,6 +43,10 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Le back-office est cloisonne par prefixe : une route admin
+                        // oubliee reste inaccessible aux comptes ordinaires, au lieu
+                        // de dependre d'une annotation que l'on peut oublier de poser.
+                        .requestMatchers("/api/v1/admin/**").hasRole(Role.ADMIN)
                         // Ces deux routes exigent un access token valide.
                         .requestMatchers("/api/v1/auth/me", "/api/v1/auth/logout-all")
                         .authenticated()
