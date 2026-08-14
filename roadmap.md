@@ -13,7 +13,7 @@ avant le suivant.
 |---|---|---|---|
 | 1 | `auth-service` | Spring Boot | ✅ fait |
 | 2 | `user-service` | Spring Boot | ✅ fait |
-| 3 | `content-service` | Spring Boot | à faire |
+| 3 | `content-service` | Spring Boot | 🚧 référentiel fait, programme à faire |
 | 4 | `learning-service` | Spring Boot | à faire |
 | 5 | `planning-service` | Spring Boot | à faire |
 | 6 | `media-service` | Spring Boot | à faire |
@@ -55,7 +55,7 @@ back-office.
 
 C'est le service le plus structurant du projet. Tout ce qui suit s'y accroche.
 
-1. **Migrer le référentiel** (systèmes, niveaux, filières, matières) depuis `user-service`
+1. ✅ **Migrer le référentiel** (systèmes, niveaux, filières, matières) depuis `user-service`
 2. **Chapitre** — rattaché à système + niveau + matière (+ filière si applicable), ordonné
 3. **Notion** — le grain fin : « les limites », « l'accord du participe passé »
 4. **Graphe de prérequis** entre notions
@@ -78,12 +78,15 @@ C'est le service le plus structurant du projet. Tout ce qui suit s'y accroche.
   que les limites ne sont pas acquises ». Sans lui, « rattraper son retard » — l'un des
   objectifs annoncés du produit — n'est pas implémentable.
 
-**Décision à trancher avant de commencer :** où vit le référentiel scolaire ?
-Recommandation : **le migrer ici**. Il est aujourd'hui dans `user-service` parce que
-l'onboarding en avait besoin, mais c'est le contenu qui en sera le gros consommateur.
-`user-service` continue de ne stocker que les codes choisis par l'élève et valide via une
-lecture sur `content-service`. Le coût est faible maintenant (aucune donnée en production),
-il sera élevé plus tard.
+**Décision prise :** le référentiel a été migré ici. `user-service` ne stocke plus que les
+codes choisis par l'élève et appelle ce service pour les valider, en `RestClient`
+synchrone.
+
+La séparation a imposé un changement : le contrôle d'usage avant suppression aurait obligé
+`content-service` à appeler `user-service`, qui l'appelle déjà — deux services qui
+s'appellent mutuellement ne se déploient plus séparément. Les suppressions ont donc été
+remplacées par de l'**archivage** : un élément archivé disparaît des choix mais reste
+résolvable.
 
 ---
 
@@ -245,8 +248,8 @@ fin — ça se conçoit dès le départ, et ça se teste.
 
 | Quand | Décision | Recommandation |
 |---|---|---|
-| Avant #3 | Où vit le référentiel scolaire | Le migrer dans `content-service` |
-| Avant #4 | Comment les services se parlent | REST synchrone (`RestClient`) d'abord ; les événements quand un vrai besoin asynchrone apparaît, probablement à #9 |
+| ~~Avant #3~~ | ~~Où vit le référentiel scolaire~~ | ✅ **Tranché** — migré dans `content-service` |
+| ~~Avant #4~~ | ~~Comment les services se parlent~~ | ✅ **Tranché** — REST synchrone (`RestClient`), délais courts ; les événements quand un vrai besoin asynchrone apparaîtra, probablement à #9 |
 | Avant #4 | Une base par service ou partagée | Une par service — c'est déjà le cas (`ojino_auth`, `ojino_user`) |
 | Avant #8 | Secret partagé HS256 ou RS256 + JWKS | Passer à RS256 : à cinq services et plus, un secret symétrique qui fuit compromet tout |
 | Avant #8 | Où vivent les quotas IA | Dans `assistant-service`, jamais dans `ai-service` — la règle métier reste côté Spring |

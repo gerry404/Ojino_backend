@@ -35,7 +35,8 @@ produirait un profil incohérent.
 
 ## Le niveau suggéré par l'âge
 
-`GET /api/v1/reference/systems/CM-FR/levels?age=15` renvoie **tous** les niveaux, en
+Exposé par `content-service` :
+`GET :8083/api/v1/reference/systems/CM-FR/levels?age=15` renvoie **tous** les niveaux, en
 marquant `suggested: true` sur ceux qui correspondent à l'âge.
 
 C'est une suggestion, **jamais un filtre**. Un redoublement, une année d'avance ou une
@@ -44,24 +45,31 @@ les rendrait impossibles à saisir serait une liste cassée. Si aucun niveau ne 
 — quelqu'un de 25 ans qui reprend — c'est le plus proche qui remonte, pour ne jamais
 laisser l'écran sans proposition.
 
-## Le référentiel est configurable
+## Le référentiel appartient au content-service
 
-Niveaux, filières et matières vivent **en base**, pas dans le code : ouvrir l'application
-à un nouveau pays revient à insérer des documents.
+Ce service ne stocke que les **codes** choisis par l'élève (`systemCode`, `levelCode`,
+`trackCode`, `subjectCodes`). Savoir si un code est valide, et s'il l'est encore, revient
+au `content-service` : c'est lui qui connaît les niveaux archivés, les filières
+disponibles par classe et les matières pertinentes.
 
-Deux systèmes sont livrés dans `resources/reference/education-systems.json` et chargés au
-premier démarrage : `CM-FR` (francophone, 6e → Terminale, filières A4/C/D/E/TI) et `CM-EN`
-(anglophone, Form 1 → Upper Sixth, Arts/Science/Commercial).
+Les appels n'ont lieu que sur les **écritures** du parcours — huit fois dans la vie d'un
+compte. La lecture de l'état d'inscription, elle, n'appelle personne : `hasTracks` est
+recopié sur le profil au moment du choix du niveau.
 
-Le chargement est conservateur : **un système déjà présent n'est jamais écrasé**. Les
-corrections faites directement dans Mongo, ou les pays ajoutés en production, survivent
-aux redéploiements.
+> **Pourquoi cette recopie.** `GET /api/v1/onboarding` est appelé à chaque ouverture de
+> l'application. Un appel réseau à cet endroit coûterait cher et rendrait l'écran
+> dépendant d'un autre service. La contrepartie est assumée : si un administrateur change
+> `hasTracks` sur un niveau, les profils déjà rattachés gardent l'ancienne valeur jusqu'à
+> ce que leur niveau soit reconfirmé. C'est un changement rare.
+
+Un `content-service` injoignable renvoie **503** et non 400 : l'élève n'a rien fait de
+mal, il peut réessayer tel quel.
 
 ## API
 
-Toutes les routes demandent un access token, sauf `/reference/**` qui est public — les
-écrans d'inscription en ont besoin avant même qu'un profil existe, et il ne contient
-aucune donnée personnelle.
+Toutes les routes demandent un access token. Les listes de choix de l'inscription
+(systèmes, niveaux, filières, matières) sont servies par `content-service`, que les
+applications appellent directement.
 
 | Méthode | Route | Rôle |
 |---|---|---|
@@ -76,10 +84,6 @@ aucune donnée personnelle.
 | PUT | `/api/v1/onboarding/difficulties` | Étape 7 |
 | PUT | `/api/v1/onboarding/availability` | Étape 8 |
 | GET | `/api/v1/profile/me` | Le profil seul |
-| GET | `/api/v1/reference/systems` | Systèmes scolaires |
-| GET | `/api/v1/reference/systems/{s}/levels?age=` | Niveaux, avec suggestion |
-| GET | `/api/v1/reference/systems/{s}/levels/{l}/tracks` | Filières du niveau |
-| GET | `/api/v1/reference/systems/{s}/subjects?level=&track=` | Matières |
 
 Le profil est identifié par le `sub` de l'access token : il n'y a **aucun identifiant à
 passer**, et personne ne peut donc modifier le profil d'un autre.
@@ -102,28 +106,8 @@ Chaque étape renvoie la même réponse :
 Le back-office vit sous `/api/v1/admin` et exige `ROLE_ADMIN`, imposé sur le **préfixe**
 dans la chaîne de filtres — une route ajoutée plus tard reste fermée même sans annotation.
 
-**Le référentiel scolaire** (`/api/v1/admin/reference`) : c'est ce qui rend le référentiel
-réellement configurable. Sans ces routes, ouvrir l'app à un nouveau pays supposerait de
-modifier Mongo à la main.
-
-| Méthode | Route |
-|---|---|
-| GET / POST | `/systems` |
-| PUT | `/systems/{code}` |
-| POST | `/systems/{code}/active?value=false` |
-| GET / POST | `/systems/{s}/levels` · `/tracks` · `/subjects` |
-| PUT / DELETE | `/systems/{s}/levels/{code}` · `/tracks/{code}` · `/subjects/{code}` |
-
-Deux protections contre les référentiels cassés :
-
-- **Un système ne se supprime pas, il se désactive.** Les profils qui s'y rattachent
-  doivent rester lisibles.
-- **Un niveau, une filière ou une matière encore référencé refuse d'être supprimé.**
-  L'erreur indique combien de profils sont concernés. Sinon ces profils pointeraient vers
-  un code disparu, et rien ne les réparerait.
-
-Une filière ou une matière ne peut pas non plus citer un niveau inexistant : elle
-existerait en base sans jamais apparaître nulle part.
+L'administration du référentiel scolaire a suivi le référentiel : elle vit désormais dans
+`content-service`, sous `/api/v1/admin/reference`.
 
 **Les profils** (`/api/v1/admin/profiles`) : recherche paginée avec filtres facultatifs
 combinables (`q`, `systemCode`, `levelCode`), et détail par identifiant. La vue montre
@@ -143,7 +127,11 @@ docker run -d -p 27017:27017 --name ojino-mongo mongo:7
 ./mvnw spring-boot:run
 ```
 
-Le service écoute sur **8082** (l'auth-service sur 8081).
+Le service écoute sur **8082** (auth 8081, content 8083).
+
+**`content-service` doit tourner** pour que le parcours d'inscription fonctionne : c'est
+lui qui valide les niveaux, filières et matières. Sans lui, la consultation du profil et
+de l'état d'inscription marche toujours ; seules les étapes de choix renvoient 503.
 
 ## Configuration
 
@@ -151,8 +139,7 @@ Le service écoute sur **8082** (l'auth-service sur 8081).
 |---|---|
 | `OJINO_JWT_SECRET` | Identique à celui de l'auth-service. Obligatoire en production. |
 | `MONGODB_URI` | Connexion Mongo. |
-| `ojino.reference.seed-on-startup` | Charge les systèmes livrés si absents. |
-| `ojino.reference.default-system` | Système proposé par défaut. |
+| `CONTENT_SERVICE_URL` | Adresse du content-service (défaut `http://localhost:8083`). |
 
 ## Tests
 
@@ -160,10 +147,12 @@ Le service écoute sur **8082** (l'auth-service sur 8081).
 ./mvnw test
 ```
 
-51 tests, aucun ne demande de base de données : suggestion par l'âge et ses cas limites,
-cascade de réinitialisation au changement de niveau, chevauchement de créneaux, ordre des
-étapes, lecture du fichier de référentiel, protections de suppression du back-office,
-assemblage des filtres de recherche, câblage du contexte.
+28 tests, aucun ne demande de base de données ni de content-service : cascade de
+réinitialisation au changement de niveau, chevauchement de créneaux, ordre des étapes,
+recopie de `hasTracks`, absence d'appel réseau à la lecture de l'état, panne du
+content-service remontée en 503, assemblage des filtres de recherche, câblage du contexte.
+
+Le référentiel lui-même a ses propres tests dans `content-service`.
 
 ## Reste à faire
 
