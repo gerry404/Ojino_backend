@@ -1,0 +1,22 @@
+{
+  "fr": {
+    "SESSION_REMINDER":     { "title": "C'est l'heure de {notion}",          "body": "Ta séance commence à {time}. Elle dure {minutes} minutes." },
+    "DEADLINE_APPROACHING": { "title": "{label} dans {days} jours",          "body": "Il te reste {days} jours pour te préparer." },
+    "WEEKLY_REPORT":        { "title": "Ta semaine en résumé",               "body": "{completed} séances terminées sur {total}. Continue comme ça." },
+    "ENCOURAGEMENT":        { "title": "On pense à toi",                     "body": "{message}" },
+    "STREAK_AT_RISK":       { "title": "Ta série de {days} jours",           "body": "Une petite séance aujourd'hui et elle continue." },
+    "CORRECTION_READY":     { "title": "Ta correction est prête",            "body": "{label} a été corrigé. Va voir les explications." },
+    "GUARDIAN_MESSAGE":     { "title": "Message de {sender}",                "body": "{message}" },
+    "SECURITY_ALERT":       { "title": "Alerte de sécurité",                 "body": "{message}" }
+  },
+  "en": {
+    "SESSION_REMINDER":     { "title": "Time for {notion}",                  "body": "Your session starts at {time}. It lasts {minutes} minutes." },
+    "DEADLINE_APPROACHING": { "title": "{label} in {days} days",             "body": "You have {days} days left to prepare." },
+    "WEEKLY_REPORT":        { "title": "Your week at a glance",              "body": "{completed} of {total} sessions done. Keep going." },
+    "ENCOURAGEMENT":        { "title": "Thinking of you",                    "body": "{message}" },
+    "STREAK_AT_RISK":       { "title": "Your {days}-day streak",             "body": "One short session today keeps it alive." },
+    "CORRECTION_READY":     { "title": "Your correction is ready",           "body": "{label} has been marked. Take a look at the feedback." },
+    "GUARDIAN_MESSAGE":     { "title": "Message from {sender}",              "body": "{message}" },
+    "SECURITY_ALERT":       { "title": "Security alert",                     "body": "{message}" }
+  }
+}
