@@ -13,15 +13,15 @@ avant le suivant.
 |---|---|---|---|
 | 1 | `auth-service` | Spring Boot | ✅ fait |
 | 2 | `user-service` | Spring Boot | ✅ fait |
-| 3 | `content-service` | Spring Boot | 🚧 référentiel fait, programme à faire |
-| 4 | `learning-service` | Spring Boot | à faire |
-| 5 | `planning-service` | Spring Boot | à faire |
-| 6 | `media-service` | Spring Boot | à faire |
-| 7 | `notification-service` | Spring Boot | à faire |
-| 8 | `assistant-service` | Spring Boot | à faire |
-| 9 | `engagement-service` | Spring Boot | à faire |
-| 10 | `ai-service` | FastAPI | à faire |
-| 11 | `realtime-service` | Go / Gin | à faire |
+| 3 | `content-service` | Spring Boot | ✅ code fait — le contenu reste à saisir |
+| 4 | `learning-service` | Spring Boot | ✅ fait |
+| 5 | `planning-service` | Spring Boot | ✅ fait |
+| 6 | `media-service` | Spring Boot | ✅ fait |
+| 7 | `notification-service` | Spring Boot | ✅ fait |
+| 8 | `assistant-service` | Spring Boot | ✅ fait |
+| 9 | `engagement-service` | Spring Boot | ✅ fait |
+| 10 | `ai-service` | FastAPI | ✅ fait — **branché** via `RemoteAiEngine` |
+| 11 | `realtime-service` | Go / Gin | 🚧 hub et WebSocket faits, aucun producteur |
 
 ---
 
@@ -220,9 +220,13 @@ Premier service hors Spring. Branché derrière le port `AiEngine` défini en é
 3. **Adaptation du registre** selon l'âge — de la maternelle à la prépa
 4. **Génération d'exercices et de quiz** rattachés à une notion
 5. **Correction de devoirs** — texte, puis photo avec OCR
-6. **Génération de plans de révision**
+6. **Génération de plans de révision** — reste à faire
 7. **Streaming des réponses**
 8. **Garde-fous et évaluation** de la qualité des réponses
+
+**Branchement :** `RemoteAiEngine` + `ojino.assistant.engine=remote`. Rien d'autre n'a
+changé côté Spring — quotas, garde-fous, contexte et historique étaient écrits et testés
+avant que le service existe. C'est ce que le port avait acheté.
 
 **Point d'attention :** l'écart de registre entre la maternelle et la prépa est la
 contrainte la plus dure du produit. Ce n'est pas un paramètre de prompt qu'on ajoute à la
