@@ -1,0 +1,107 @@
+### Sonde de sante — la seule route ouverte sans jeton
+GET http://localhost:8092/actuator/health
+
+### ---------------------------------------------------------------------------
+### Les requetes ci-dessous echoueront tant que tu n'as pas ecrit les
+### controleurs. C'est normal : elles decrivent ce que tu dois construire.
+### ---------------------------------------------------------------------------
+
+### La FAQ publiee — parcours eleve
+GET http://localhost:8092/api/v1/faq
+Authorization: Bearer {{token}}
+
+### La FAQ d'une categorie
+GET http://localhost:8092/api/v1/faq?category=COMPTE
+Authorization: Bearer {{token}}
+
+### Les categories disponibles
+GET http://localhost:8092/api/v1/faq/categories
+Authorization: Bearer {{token}}
+
+### ---------------------------------------------------------------------------
+### Back-office
+### ---------------------------------------------------------------------------
+
+### Creer une entree — elle doit ressortir en DRAFT
+POST http://localhost:8092/api/v1/admin/faq
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "code": "CHANGER_CLASSE",
+  "category": "COMPTE",
+  "question": {
+    "fr": "Comment changer de classe ?",
+    "en": "How do I change my class?"
+  },
+  "answer": {
+    "fr": "Depuis ton profil, section Scolarite, choisis ta nouvelle classe.",
+    "en": "From your profile, under Schooling, pick your new class."
+  },
+  "position": 10
+}
+
+### Tout voir, brouillons compris
+GET http://localhost:8092/api/v1/admin/faq
+Authorization: Bearer {{adminToken}}
+
+### Modifier — le code envoye doit etre ignore
+PUT http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "code": "PEU_IMPORTE",
+  "category": "COMPTE",
+  "question": {
+    "fr": "Comment changer de classe en cours d'annee ?",
+    "en": "How do I change class mid-year?"
+  },
+  "answer": {
+    "fr": "Depuis ton profil, section Scolarite.",
+    "en": "From your profile, under Schooling."
+  },
+  "position": 10
+}
+
+### Publier
+PATCH http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE/publish
+Authorization: Bearer {{adminToken}}
+
+### Archiver — l'entree doit disparaitre du parcours eleve, pas de la base
+PATCH http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE/archive
+Authorization: Bearer {{adminToken}}
+
+### ---------------------------------------------------------------------------
+### Controles de securite — a lancer avant de dire que c'est fini
+### ---------------------------------------------------------------------------
+
+### Sans jeton -> 401
+GET http://localhost:8092/api/v1/admin/faq
+
+### Avec un jeton d'eleve sur une route admin -> 403
+GET http://localhost:8092/api/v1/admin/faq
+Authorization: Bearer {{token}}
+
+### Code deja pris -> 409 faq_code_already_exists
+POST http://localhost:8092/api/v1/admin/faq
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "code": "CHANGER_CLASSE",
+  "category": "COMPTE",
+  "question": { "fr": "Doublon", "en": "Duplicate" },
+  "answer": { "fr": "Doublon", "en": "Duplicate" },
+  "position": 20
+}
+
+### Champ manquant -> 400 validation_failed
+POST http://localhost:8092/api/v1/admin/faq
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "category": "COMPTE",
+  "question": { "fr": "Sans code", "en": "No code" }
+}

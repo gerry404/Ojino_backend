@@ -1,0 +1,14 @@
+package com.schoolcopilot.support_service.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "ojino.security")
+public record SecurityProperties(Jwt jwt) {
+
+    /**
+     * Le secret est le meme que celui de l'auth-service. Ce partage evite de
+     * l'appeler a chaque requete : la signature suffit a prouver l'identite.
+     */
+    public record Jwt(String secret, String issuer) {
+    }
+}
