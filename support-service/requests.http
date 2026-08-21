@@ -2,11 +2,10 @@
 GET http://localhost:8092/actuator/health
 
 ### ---------------------------------------------------------------------------
-### Les requetes ci-dessous echoueront tant que tu n'as pas ecrit les
-### controleurs. C'est normal : elles decrivent ce que tu dois construire.
+### Parcours eleve — ne voit que ce qui est publie et non archive
 ### ---------------------------------------------------------------------------
 
-### La FAQ publiee — parcours eleve
+### La FAQ publiee
 GET http://localhost:8092/api/v1/faq
 Authorization: Bearer {{token}}
 
@@ -14,7 +13,7 @@ Authorization: Bearer {{token}}
 GET http://localhost:8092/api/v1/faq?category=COMPTE
 Authorization: Bearer {{token}}
 
-### Les categories disponibles
+### Les categories qui ont au moins une entree visible
 GET http://localhost:8092/api/v1/faq/categories
 Authorization: Bearer {{token}}
 
@@ -41,11 +40,15 @@ Authorization: Bearer {{adminToken}}
   "position": 10
 }
 
-### Tout voir, brouillons compris
+### Tout voir, brouillons et archives compris
 GET http://localhost:8092/api/v1/admin/faq
 Authorization: Bearer {{adminToken}}
 
-### Modifier — le code envoye doit etre ignore
+### Une entree precise
+GET http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE
+Authorization: Bearer {{adminToken}}
+
+### Modifier — le code envoye doit etre ignore, le statut ne doit pas bouger
 PUT http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE
 Content-Type: application/json
 Authorization: Bearer {{adminToken}}
@@ -68,9 +71,30 @@ Authorization: Bearer {{adminToken}}
 PATCH http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE/publish
 Authorization: Bearer {{adminToken}}
 
-### Archiver — l'entree doit disparaitre du parcours eleve, pas de la base
+### Depublier — repasse en brouillon
+PATCH http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE/unpublish
+Authorization: Bearer {{adminToken}}
+
+### Archiver — l'entree disparait du parcours eleve, pas de la base
 PATCH http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE/archive
 Authorization: Bearer {{adminToken}}
+
+### Restaurer
+PATCH http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE/restore
+Authorization: Bearer {{adminToken}}
+
+### ---------------------------------------------------------------------------
+### Le parcours qui prouve la regle metier — a jouer dans cet ordre
+###
+###   1. POST                       -> 200, status DRAFT
+###   2. GET  /admin/faq            -> l'entree est la
+###   3. GET  /api/v1/faq           -> elle n'y est PAS (brouillon)
+###   4. PATCH .../publish          -> status PUBLISHED
+###   5. GET  /api/v1/faq           -> elle apparait
+###   6. PATCH .../archive          -> archived true
+###   7. GET  /api/v1/faq           -> elle disparait
+###   8. GET  /admin/faq            -> elle est TOUJOURS la
+### ---------------------------------------------------------------------------
 
 ### ---------------------------------------------------------------------------
 ### Controles de securite — a lancer avant de dire que c'est fini
@@ -82,6 +106,10 @@ GET http://localhost:8092/api/v1/admin/faq
 ### Avec un jeton d'eleve sur une route admin -> 403
 GET http://localhost:8092/api/v1/admin/faq
 Authorization: Bearer {{token}}
+
+### Entree inconnue -> 404 faq_entry_not_found
+GET http://localhost:8092/api/v1/admin/faq/N_EXISTE_PAS
+Authorization: Bearer {{adminToken}}
 
 ### Code deja pris -> 409 faq_code_already_exists
 POST http://localhost:8092/api/v1/admin/faq
@@ -104,4 +132,17 @@ Authorization: Bearer {{adminToken}}
 {
   "category": "COMPTE",
   "question": { "fr": "Sans code", "en": "No code" }
+}
+
+### Texte francais vide -> 400, errors["question.fr"]
+POST http://localhost:8092/api/v1/admin/faq
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "code": "TEXTE_VIDE",
+  "category": "COMPTE",
+  "question": { "fr": "   ", "en": "Blank french" },
+  "answer": { "fr": "Reponse", "en": "Answer" },
+  "position": 0
 }
