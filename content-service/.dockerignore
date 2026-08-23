@@ -1,0 +1,16 @@
+# Ce qui ne doit jamais entrer dans le contexte de build : ni les artefacts
+# locaux, ni l'historique Git, ni la configuration d'IDE.
+target/
+**/target/
+.git/
+.gitignore
+.idea/
+*.iml
+.mvn/
+mvnw
+mvnw.cmd
+Dockerfile
+.dockerignore
+*.md
+requests.http
+http-client*.json
