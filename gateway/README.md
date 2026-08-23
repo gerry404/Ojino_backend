@@ -77,6 +77,20 @@ restant ouverte longtemps.
 
 ## Lancer
 
+La plateforme s'etale sur trois depots, clones **cote a cote** : le
+`docker-compose.yml` construit les deux voisins par des chemins relatifs.
+
+```bash
+git clone https://github.com/gerry404/Ojino_backend.git
+git clone https://github.com/gerry404/Ojino_fast_backend.git
+git clone https://github.com/gerry404/Ojino_ia_backend.git
+cd Ojino_backend && cp .env.example .env
+```
+
+Chaque dossier porte le nom de son depot — c'est ce qui rend les chemins par
+defaut corrects sans rien configurer. Si ton arborescence differe, renseigne
+`REALTIME_CONTEXT` et `AI_CONTEXT` dans le `.env`.
+
 La passerelle vit dans le `docker-compose.yml` principal, sous le profil `full` :
 
 ```bash

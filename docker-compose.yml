@@ -191,13 +191,14 @@ services:
   # ---------------------------------------------------------------------------
   # Services des autres depots
   #
-  # Contextes de build relatifs : les trois depots sont clones cote a cote.
-  # Sur le serveur, les noms de dossiers different — d'ou les variables.
+  # Contextes de build relatifs : les trois depots sont clones cote a cote,
+  # chaque dossier portant le nom de son depot. Les variables ne servent qu'a
+  # couvrir une arborescence differente.
   # ---------------------------------------------------------------------------
 
   realtime-service:
     build:
-      context: "${REALTIME_CONTEXT:-../Ojino realtime}"
+      context: ${REALTIME_CONTEXT:-../Ojino_fast_backend}
     container_name: ojino-realtime
     restart: unless-stopped
     profiles: ["full"]
@@ -212,7 +213,7 @@ services:
 
   ai-service:
     build:
-      context: "${AI_CONTEXT:-../Ojino ia}"
+      context: ${AI_CONTEXT:-../Ojino_ia_backend}
     container_name: ojino-ai
     restart: unless-stopped
     profiles: ["full"]
