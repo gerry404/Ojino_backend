@@ -1,0 +1,115 @@
+# Passerelle unique devant tous les services d'Ojino.
+#
+# Une seule origine pour le navigateur : l'application Angular et l'API vivent
+# sous le meme nom de domaine. Le CORS disparait donc completement en
+# production ; il ne reste utile qu'en developpement, quand le serveur Angular
+# tourne sur son propre port.
+#
+# Les amonts sont des variables. En developpement elles pointent vers les
+# services lances depuis l'IDE (host.docker.internal), en production vers les
+# noms de conteneurs. Un seul fichier, deux environnements.
+
+{
+	admin off
+	email {$ACME_EMAIL:contact@ojino.cm}
+}
+
+{$OJINO_DOMAIN::80} {
+
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# -----------------------------------------------------------------------
+	# API
+	#
+	# Un prefixe par service, retire avant transmission :
+	#
+	#   /api/support/api/v1/faq   ->   support-service   /api/v1/faq
+	#
+	# Le prefixe evite que deux services se disputent /api/v1/admin/**, et il
+	# garde la meme forme d'URL qu'en developpement direct : le code Angular
+	# concatene toujours `${base}/api/v1/...`, seule la base change.
+	# -----------------------------------------------------------------------
+
+	handle_path /api/auth/* {
+		reverse_proxy {$AUTH_UPSTREAM:host.docker.internal:8081}
+	}
+
+	handle_path /api/users/* {
+		reverse_proxy {$USER_UPSTREAM:host.docker.internal:8082}
+	}
+
+	handle_path /api/content/* {
+		reverse_proxy {$CONTENT_UPSTREAM:host.docker.internal:8083}
+	}
+
+	handle_path /api/learning/* {
+		reverse_proxy {$LEARNING_UPSTREAM:host.docker.internal:8084}
+	}
+
+	handle_path /api/planning/* {
+		reverse_proxy {$PLANNING_UPSTREAM:host.docker.internal:8085}
+	}
+
+	handle_path /api/media/* {
+		reverse_proxy {$MEDIA_UPSTREAM:host.docker.internal:8086}
+	}
+
+	handle_path /api/notifications/* {
+		reverse_proxy {$NOTIFICATION_UPSTREAM:host.docker.internal:8087}
+	}
+
+	handle_path /api/engagement/* {
+		reverse_proxy {$ENGAGEMENT_UPSTREAM:host.docker.internal:8088}
+	}
+
+	handle_path /api/support/* {
+		reverse_proxy {$SUPPORT_UPSTREAM:host.docker.internal:8092}
+	}
+
+	# L'assistant diffuse ses reponses jeton par jeton. `flush_interval -1`
+	# coupe la mise en tampon : sans lui la passerelle accumulerait le flux et
+	# le livrerait d'un bloc, ce qui annulerait tout l'interet du streaming.
+	handle_path /api/assistant/* {
+		reverse_proxy {$ASSISTANT_UPSTREAM:host.docker.internal:8089} {
+			flush_interval -1
+			transport http {
+				read_timeout 5m
+			}
+		}
+	}
+
+	# WebSocket. Caddy detecte l'Upgrade et bascule seul ; il ne reste qu'a
+	# desserrer les delais, une connexion temps reel restant ouverte.
+	handle_path /ws/* {
+		reverse_proxy {$REALTIME_UPSTREAM:host.docker.internal:8090} {
+			transport http {
+				read_timeout 1h
+				write_timeout 1h
+			}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# ai-service (8091) n'est VOLONTAIREMENT pas expose.
+	#
+	# Il n'a pas d'authentification utilisateur : il se protege par un jeton
+	# interne partage avec l'assistant-service, qui est son seul appelant. Le
+	# publier reviendrait a offrir un acces direct au moteur d'inference, avec
+	# le cout de calcul qui va avec.
+	#
+	# La regle generale : un service qui n'a pas de resource server n'a rien a
+	# faire derriere une passerelle publique.
+	# -----------------------------------------------------------------------
+
+	# Tout le reste : l'application Angular rendue par Node (SSR).
+	handle {
+		reverse_proxy {$WEB_UPSTREAM:host.docker.internal:4200}
+	}
+}
