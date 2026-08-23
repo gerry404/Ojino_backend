@@ -173,10 +173,11 @@ services:
       USER_SERVICE_URL: http://user-service:8082
       LEARNING_SERVICE_URL: http://learning-service:8084
       CONTENT_SERVICE_URL: http://content-service:8083
-      # "canned" tant que ai-service n'est pas conteneurise : le moteur reel
-      # vit dans un autre depot. Passe a "remote" quand il tournera ici.
-      AI_ENGINE: ${AI_ENGINE:-canned}
-      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai-service:8091}
+      # ai-service tourne desormais dans le meme reseau. Son fournisseur
+      # vaut "echo" par defaut : le parcours complet s'eprouve sans compte
+      # ni facture.
+      AI_ENGINE: ${AI_ENGINE:-remote}
+      AI_SERVICE_URL: http://ai-service:8091
 
   support-service:
     <<: *service
@@ -186,6 +187,56 @@ services:
       <<: *common-env
       MONGODB_URI: mongodb://support_service:${OJINO_DB_PASSWORD:-ojino_dev_password}@mongo:27017/ojino_support?authSource=ojino_support
       SUPPORT_FAQ_PUBLIC: ${SUPPORT_FAQ_PUBLIC:-false}
+
+  # ---------------------------------------------------------------------------
+  # Services des autres depots
+  #
+  # Contextes de build relatifs : les trois depots sont clones cote a cote.
+  # Sur le serveur, les noms de dossiers different — d'ou les variables.
+  # ---------------------------------------------------------------------------
+
+  realtime-service:
+    build:
+      context: "${REALTIME_CONTEXT:-../Ojino realtime}"
+    container_name: ojino-realtime
+    restart: unless-stopped
+    profiles: ["full"]
+    environment:
+      <<: [*common-env, *internal-env]
+      PORT: "8090"
+      OJINO_JWT_ISSUER: ojino-auth
+      # Quelles pages ont le droit d'ouvrir une WebSocket. Une liste vide
+      # autorise tout : commode en developpement, inacceptable en production.
+      ALLOWED_ORIGINS: ${OJINO_PUBLIC_URL:-http://localhost}
+      MAX_CONNECTIONS_PER_USER: ${MAX_CONNECTIONS_PER_USER:-5}
+
+  ai-service:
+    build:
+      context: "${AI_CONTEXT:-../Ojino ia}"
+    container_name: ojino-ai
+    restart: unless-stopped
+    profiles: ["full"]
+    # Aucun port publie et aucune route dans le Caddyfile : ce service n'a pas
+    # de resource server, il ne sait pas valider un jeton d'utilisateur. Il
+    # n'existe que sur le reseau prive, pour assistant-service.
+    #
+    # Il ne recoit pas non plus OJINO_JWT_SECRET : il n'en a aucun usage, et
+    # un secret qu'un service ne detient pas est un secret qu'il ne peut pas
+    # laisser fuir.
+    environment:
+      TZ: ${TZ:-Africa/Douala}
+      PORT: "8091"
+      # Le service python nomme cette variable INTERNAL_TOKEN quand les
+      # services Spring l'appellent OJINO_INTERNAL_TOKEN. Noms differents,
+      # valeur identique — sinon assistant-service prend un 401.
+      INTERNAL_TOKEN: ${OJINO_INTERNAL_TOKEN:-dev-internal-token-a-remplacer-en-production}
+      # "echo" fabrique les reponses : aucun modele appele, aucune facture.
+      LLM_PROVIDER: ${LLM_PROVIDER:-echo}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-hash}
+      CONTENT_SERVICE_URL: http://content-service:8083
 
   # ---------------------------------------------------------------------------
   # Passerelle
@@ -221,7 +272,7 @@ services:
       ENGAGEMENT_UPSTREAM: engagement-service:8088
       ASSISTANT_UPSTREAM: assistant-service:8089
       SUPPORT_UPSTREAM: support-service:8092
-      REALTIME_UPSTREAM: ${REALTIME_UPSTREAM:-host.docker.internal:8090}
+      REALTIME_UPSTREAM: realtime-service:8090
       WEB_UPSTREAM: ${WEB_UPSTREAM:-host.docker.internal:4200}
     volumes:
       - ./gateway/Caddyfile:/etc/caddy/Caddyfile:ro

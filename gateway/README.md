@@ -98,10 +98,11 @@ SUPPORT_UPSTREAM=host.docker.internal:8092 docker compose --profile full up -d g
 
 ## Ce qui manque encore
 
-`realtime-service` (Go, 8090) et `ai-service` (Python, 8091) vivent dans
-d'autres depots : ils ne sont pas encore conteneurises ici. `REALTIME_UPSTREAM`
-pointe donc par defaut vers `host.docker.internal`.
+Seule l'application Angular n'est pas conteneurisee : `WEB_UPSTREAM` vise
+`host.docker.internal:4200`, c'est-a-dire `ng serve`. Une fois construite et
+servie par Node, ce sera `ojino-web:4000`.
 
-L'application Angular non plus : `WEB_UPSTREAM` vise `host.docker.internal:4200`,
-c'est-a-dire `ng serve`. Une fois construite et servie par Node, ce sera
-`ojino-web:4000`.
+`realtime-service` et `ai-service` vivent dans des depots voisins, clones a cote
+de celui-ci. Leurs contextes de build sont des variables — `REALTIME_CONTEXT` et
+`AI_CONTEXT` — parce que les dossiers ne portent pas le meme nom en local et sur
+le serveur.
