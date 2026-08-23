@@ -20,3 +20,5 @@ Thumbs.db
 # Fichiers deposes en developpement : jamais commites.
 data/
 tuto-support-service.md
+# Jetons colles pour le client HTTP d IntelliJ : jamais commites.
+http-client.private.env.json

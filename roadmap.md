@@ -22,6 +22,7 @@ avant le suivant.
 | 9 | `engagement-service` | Spring Boot | ✅ fait |
 | 10 | `ai-service` | FastAPI | ✅ fait — **branché** via `RemoteAiEngine` |
 | 11 | `realtime-service` | Go / Gin | 🚧 hub et WebSocket faits, aucun producteur |
+| 12 | `support-service` | Spring Boot | ✅ fait |
 
 ---
 
@@ -245,6 +246,25 @@ fin — ça se conçoit dès le départ, et ça se teste.
 
 **Dépend de :** `auth-service` (validation du token), `assistant-service`,
 `notification-service`.
+
+## 12. support-service ✅
+
+**Possède :** le centre d'aide. Port 8092, base `ojino_support`.
+
+1. **FAQ bilingue** — question et réponse portées en français et en anglais dans
+   le même document ; le back renvoie les deux, le front choisit
+2. **Statut éditorial** — `DRAFT` / `PUBLISHED`, une création est toujours un
+   brouillon
+3. **Archivage** — aucune suppression exposée
+4. **Routes séparées** — `/api/v1/faq` en lecture, `/api/v1/admin/faq` fermé à
+   `ROLE_ADMIN` dans la chaîne de sécurité *et* par `@PreAuthorize`
+5. **Ouverture configurable** — `ojino.support.faq.public-access` décide si la
+   FAQ se lit sans jeton, sans toucher au code
+
+**Dépend de :** `auth-service` seulement, pour la validation du token. Aucun
+service ne l'appelle : pas de filtre interne.
+
+**Reste à faire :** les demandes d'assistance (`SupportTicket`), paginées.
 
 ---
 

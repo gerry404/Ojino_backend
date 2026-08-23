@@ -1,0 +1,148 @@
+### Sonde de sante — la seule route ouverte sans jeton
+GET http://localhost:8092/actuator/health
+
+### ---------------------------------------------------------------------------
+### Parcours eleve — ne voit que ce qui est publie et non archive
+### ---------------------------------------------------------------------------
+
+### La FAQ publiee
+GET http://localhost:8092/api/v1/faq
+Authorization: Bearer {{token}}
+
+### La FAQ d'une categorie
+GET http://localhost:8092/api/v1/faq?category=COMPTE
+Authorization: Bearer {{token}}
+
+### Les categories qui ont au moins une entree visible
+GET http://localhost:8092/api/v1/faq/categories
+Authorization: Bearer {{token}}
+
+### ---------------------------------------------------------------------------
+### Back-office
+### ---------------------------------------------------------------------------
+
+### Creer une entree — elle doit ressortir en DRAFT
+POST http://localhost:8092/api/v1/admin/faq
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "code": "CHANGER_CLASSE",
+  "category": "COMPTE",
+  "question": {
+    "fr": "Comment changer de classe ?",
+    "en": "How do I change my class?"
+  },
+  "answer": {
+    "fr": "Depuis ton profil, section Scolarite, choisis ta nouvelle classe.",
+    "en": "From your profile, under Schooling, pick your new class."
+  },
+  "position": 10
+}
+
+### Tout voir, brouillons et archives compris
+GET http://localhost:8092/api/v1/admin/faq
+Authorization: Bearer {{adminToken}}
+
+### Une entree precise
+GET http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE
+Authorization: Bearer {{adminToken}}
+
+### Modifier — le code envoye doit etre ignore, le statut ne doit pas bouger
+PUT http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "code": "PEU_IMPORTE",
+  "category": "COMPTE",
+  "question": {
+    "fr": "Comment changer de classe en cours d'annee ?",
+    "en": "How do I change class mid-year?"
+  },
+  "answer": {
+    "fr": "Depuis ton profil, section Scolarite.",
+    "en": "From your profile, under Schooling."
+  },
+  "position": 10
+}
+
+### Publier
+PATCH http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE/publish
+Authorization: Bearer {{adminToken}}
+
+### Depublier — repasse en brouillon
+PATCH http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE/unpublish
+Authorization: Bearer {{adminToken}}
+
+### Archiver — l'entree disparait du parcours eleve, pas de la base
+PATCH http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE/archive
+Authorization: Bearer {{adminToken}}
+
+### Restaurer
+PATCH http://localhost:8092/api/v1/admin/faq/CHANGER_CLASSE/restore
+Authorization: Bearer {{adminToken}}
+
+### ---------------------------------------------------------------------------
+### Le parcours qui prouve la regle metier — a jouer dans cet ordre
+###
+###   1. POST                       -> 200, status DRAFT
+###   2. GET  /admin/faq            -> l'entree est la
+###   3. GET  /api/v1/faq           -> elle n'y est PAS (brouillon)
+###   4. PATCH .../publish          -> status PUBLISHED
+###   5. GET  /api/v1/faq           -> elle apparait
+###   6. PATCH .../archive          -> archived true
+###   7. GET  /api/v1/faq           -> elle disparait
+###   8. GET  /admin/faq            -> elle est TOUJOURS la
+### ---------------------------------------------------------------------------
+
+### ---------------------------------------------------------------------------
+### Controles de securite — a lancer avant de dire que c'est fini
+### ---------------------------------------------------------------------------
+
+### Sans jeton -> 401
+GET http://localhost:8092/api/v1/admin/faq
+
+### Avec un jeton d'eleve sur une route admin -> 403
+GET http://localhost:8092/api/v1/admin/faq
+Authorization: Bearer {{token}}
+
+### Entree inconnue -> 404 faq_entry_not_found
+GET http://localhost:8092/api/v1/admin/faq/N_EXISTE_PAS
+Authorization: Bearer {{adminToken}}
+
+### Code deja pris -> 409 faq_code_already_exists
+POST http://localhost:8092/api/v1/admin/faq
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "code": "CHANGER_CLASSE",
+  "category": "COMPTE",
+  "question": { "fr": "Doublon", "en": "Duplicate" },
+  "answer": { "fr": "Doublon", "en": "Duplicate" },
+  "position": 20
+}
+
+### Champ manquant -> 400 validation_failed
+POST http://localhost:8092/api/v1/admin/faq
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "category": "COMPTE",
+  "question": { "fr": "Sans code", "en": "No code" }
+}
+
+### Texte francais vide -> 400, errors["question.fr"]
+POST http://localhost:8092/api/v1/admin/faq
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "code": "TEXTE_VIDE",
+  "category": "COMPTE",
+  "question": { "fr": "   ", "en": "Blank french" },
+  "answer": { "fr": "Reponse", "en": "Answer" },
+  "position": 0
+}
