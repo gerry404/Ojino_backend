@@ -77,31 +77,31 @@ restant ouverte longtemps.
 
 ## Lancer
 
-**En local**, services démarrés depuis IntelliJ :
+La passerelle vit dans le `docker-compose.yml` principal, sous le profil `full` :
 
 ```bash
-docker compose -f docker-compose.gateway.yml up -d
+docker compose --profile full up -d
 ```
 
-Tout passe alors par `http://localhost`, en clair, sans certificat.
+Sur le serveur, une fois le domaine pointe dessus, renseigne `OJINO_DOMAIN` et
+`ACME_EMAIL` dans le `.env`. Caddy obtient le certificat au premier demarrage.
 
-**Sur le serveur**, une fois le domaine pointé dessus :
+Les ports **80 et 443 doivent etre ouverts** : Let's Encrypt verifie le domaine
+en appelant le 80.
+
+Pour valider le routage sans conteneuriser les services, garde-les dans l'IDE et
+pointe les amonts vers l'hote :
 
 ```bash
-OJINO_DOMAIN=ojino.cm ACME_EMAIL=toi@exemple.com \
-  docker compose -f docker-compose.gateway.yml up -d
+SUPPORT_UPSTREAM=host.docker.internal:8092 docker compose --profile full up -d gateway
 ```
-
-Caddy obtient le certificat au premier démarrage. Les ports **80 et 443 doivent
-être ouverts** : Let's Encrypt vérifie le domaine en appelant le 80.
 
 ## Ce qui manque encore
 
-Les services ne sont **pas conteneurisés** — aucun `Dockerfile` dans le dépôt.
-Les amonts pointent donc vers `host.docker.internal`, c'est-à-dire vers des
-processus lancés à la main.
+`realtime-service` (Go, 8090) et `ai-service` (Python, 8091) vivent dans
+d'autres depots : ils ne sont pas encore conteneurises ici. `REALTIME_UPSTREAM`
+pointe donc par defaut vers `host.docker.internal`.
 
-C'est jouable pour valider le routage, pas pour un déploiement : au premier
-redémarrage du serveur, rien ne remonte. Un `Dockerfile` par service, puis les
-variables `*_UPSTREAM` renseignées avec les noms de conteneurs, et l'ensemble
-tient debout tout seul.
+L'application Angular non plus : `WEB_UPSTREAM` vise `host.docker.internal:4200`,
+c'est-a-dire `ng serve`. Une fois construite et servie par Node, ce sera
+`ojino-web:4000`.

@@ -1,13 +1,43 @@
-# MongoDB pour le developpement local.
+# La plateforme Ojino.
 #
-# Chaque service a sa propre base ET son propre utilisateur : auth-service ne
-# peut pas lire les profils, content-service ne peut pas lire les comptes. Si un
-# service est compromis, le degat s'arrete a sa base.
+# Trois profils, pour ne demarrer que ce dont on a besoin :
 #
-# Les identifiants ci-dessous sont ceux du developpement. En production, tout
-# passe par MONGODB_URI et rien de ce fichier n'est utilise.
+#   docker compose up -d                      MongoDB seul — le quotidien du
+#                                             developpement, les services
+#                                             tournant depuis l'IDE
+#   docker compose --profile tools up -d      + mongo-express
+#   docker compose --profile full up -d       + les dix services + la passerelle
+#
+# Le dernier est celui du serveur : une commande, toute la plateforme.
+
+x-common-env: &common-env
+  # Le meme secret pour tous : chaque service valide les tokens emis par
+  # l'auth-service sans jamais l'appeler. Un service qui ne partagerait pas ce
+  # secret rejetterait tout le monde.
+  OJINO_JWT_SECRET: ${OJINO_JWT_SECRET:-dev-secret-a-remplacer-absolument-en-production-32+}
+  TZ: ${TZ:-Africa/Douala}
+
+x-internal-env: &internal-env
+  # Protege les routes de service a service, celles qui n'ont pas d'utilisateur
+  # derriere elles.
+  OJINO_INTERNAL_TOKEN: ${OJINO_INTERNAL_TOKEN:-dev-internal-token-a-remplacer-en-production}
+
+x-service: &service
+  restart: unless-stopped
+  profiles: ["full"]
+  depends_on:
+    mongo:
+      condition: service_healthy
+  # Aucun port publie : la passerelle est la seule porte d'entree. Un service
+  # joignable directement depuis l'exterieur contournerait le TLS, les entetes
+  # de securite et les futures limites de debit.
 
 services:
+
+  # ---------------------------------------------------------------------------
+  # Base de donnees
+  # ---------------------------------------------------------------------------
+
   mongo:
     image: mongo:7
     container_name: ojino-mongo
@@ -48,5 +78,164 @@ services:
       mongo:
         condition: service_healthy
 
+  # ---------------------------------------------------------------------------
+  # Services metier
+  # ---------------------------------------------------------------------------
+
+  auth-service:
+    <<: *service
+    build: ./auth-service
+    container_name: ojino-auth
+    environment:
+      <<: *common-env
+      MONGODB_URI: mongodb://auth_service:${OJINO_DB_PASSWORD:-ojino_dev_password}@mongo:27017/ojino_auth?authSource=ojino_auth
+      OJINO_ADMIN_EMAILS: ${OJINO_ADMIN_EMAILS:-}
+      GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
+      APPLE_CLIENT_IDS: ${APPLE_CLIENT_IDS:-}
+
+  user-service:
+    <<: *service
+    build: ./user-service
+    container_name: ojino-user
+    environment:
+      <<: *common-env
+      MONGODB_URI: mongodb://user_service:${OJINO_DB_PASSWORD:-ojino_dev_password}@mongo:27017/ojino_user?authSource=ojino_user
+      CONTENT_SERVICE_URL: http://content-service:8083
+
+  content-service:
+    <<: *service
+    build: ./content-service
+    container_name: ojino-content
+    environment:
+      <<: *common-env
+      MONGODB_URI: mongodb://content_service:${OJINO_DB_PASSWORD:-ojino_dev_password}@mongo:27017/ojino_content?authSource=ojino_content
+
+  learning-service:
+    <<: *service
+    build: ./learning-service
+    container_name: ojino-learning
+    environment:
+      <<: *common-env
+      MONGODB_URI: mongodb://learning_service:${OJINO_DB_PASSWORD:-ojino_dev_password}@mongo:27017/ojino_learning?authSource=ojino_learning
+      CONTENT_SERVICE_URL: http://content-service:8083
+
+  planning-service:
+    <<: *service
+    build: ./planning-service
+    container_name: ojino-planning
+    environment:
+      <<: *common-env
+      MONGODB_URI: mongodb://planning_service:${OJINO_DB_PASSWORD:-ojino_dev_password}@mongo:27017/ojino_planning?authSource=ojino_planning
+      USER_SERVICE_URL: http://user-service:8082
+      LEARNING_SERVICE_URL: http://learning-service:8084
+
+  media-service:
+    <<: *service
+    build: ./media-service
+    container_name: ojino-media
+    environment:
+      <<: *common-env
+      MONGODB_URI: mongodb://media_service:${OJINO_DB_PASSWORD:-ojino_dev_password}@mongo:27017/ojino_media?authSource=ojino_media
+      OJINO_MEDIA_SECRET: ${OJINO_MEDIA_SECRET:-dev-media-secret-a-remplacer-en-production}
+      MEDIA_STORAGE: ${MEDIA_STORAGE:-local}
+      MEDIA_DIRECTORY: /app/data/media
+      MEDIA_PUBLIC_URL: ${OJINO_PUBLIC_URL:-http://localhost}/api/media
+    volumes:
+      # Sans ce volume, les fichiers televerses disparaissent au premier
+      # redemarrage du conteneur.
+      - media-data:/app/data/media
+
+  notification-service:
+    <<: *service
+    build: ./notification-service
+    container_name: ojino-notification
+    environment:
+      <<: [*common-env, *internal-env]
+      MONGODB_URI: mongodb://notification_service:${OJINO_DB_PASSWORD:-ojino_dev_password}@mongo:27017/ojino_notification?authSource=ojino_notification
+      NOTIFICATION_SENDERS: ${NOTIFICATION_SENDERS:-}
+
+  engagement-service:
+    <<: *service
+    build: ./engagement-service
+    container_name: ojino-engagement
+    environment:
+      <<: [*common-env, *internal-env]
+      MONGODB_URI: mongodb://engagement_service:${OJINO_DB_PASSWORD:-ojino_dev_password}@mongo:27017/ojino_engagement?authSource=ojino_engagement
+      NOTIFICATION_SERVICE_URL: http://notification-service:8087
+
+  assistant-service:
+    <<: *service
+    build: ./assistant-service
+    container_name: ojino-assistant
+    environment:
+      <<: [*common-env, *internal-env]
+      MONGODB_URI: mongodb://assistant_service:${OJINO_DB_PASSWORD:-ojino_dev_password}@mongo:27017/ojino_assistant?authSource=ojino_assistant
+      USER_SERVICE_URL: http://user-service:8082
+      LEARNING_SERVICE_URL: http://learning-service:8084
+      CONTENT_SERVICE_URL: http://content-service:8083
+      # "canned" tant que ai-service n'est pas conteneurise : le moteur reel
+      # vit dans un autre depot. Passe a "remote" quand il tournera ici.
+      AI_ENGINE: ${AI_ENGINE:-canned}
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai-service:8091}
+
+  support-service:
+    <<: *service
+    build: ./support-service
+    container_name: ojino-support
+    environment:
+      <<: *common-env
+      MONGODB_URI: mongodb://support_service:${OJINO_DB_PASSWORD:-ojino_dev_password}@mongo:27017/ojino_support?authSource=ojino_support
+      SUPPORT_FAQ_PUBLIC: ${SUPPORT_FAQ_PUBLIC:-false}
+
+  # ---------------------------------------------------------------------------
+  # Passerelle
+  #
+  # realtime-service (Go, 8090) et ai-service (Python, 8091) vivent dans
+  # d'autres depots. Quand ils rejoindront celui-ci, il suffira d'ajouter leur
+  # bloc ci-dessus et de pointer REALTIME_UPSTREAM / AI_SERVICE_URL dessus.
+  # ---------------------------------------------------------------------------
+
+  gateway:
+    image: caddy:2-alpine
+    container_name: ojino-gateway
+    restart: unless-stopped
+    profiles: ["full"]
+    ports:
+      - "80:80"
+      - "443:443"
+      # HTTP/3 passe par UDP. Sans cette ligne Caddy sert quand meme le site en
+      # HTTP/2 : c'est un gain de latence, pas une condition de marche.
+      - "443:443/udp"
+    environment:
+      # ":80" en local : Caddy ecoute en clair et ne demande aucun certificat.
+      # Mets un nom de domaine et il l'obtient puis le renouvelle tout seul.
+      OJINO_DOMAIN: ${OJINO_DOMAIN:-:80}
+      ACME_EMAIL: ${ACME_EMAIL:-contact@ojino.cm}
+      AUTH_UPSTREAM: auth-service:8081
+      USER_UPSTREAM: user-service:8082
+      CONTENT_UPSTREAM: content-service:8083
+      LEARNING_UPSTREAM: learning-service:8084
+      PLANNING_UPSTREAM: planning-service:8085
+      MEDIA_UPSTREAM: media-service:8086
+      NOTIFICATION_UPSTREAM: notification-service:8087
+      ENGAGEMENT_UPSTREAM: engagement-service:8088
+      ASSISTANT_UPSTREAM: assistant-service:8089
+      SUPPORT_UPSTREAM: support-service:8092
+      REALTIME_UPSTREAM: ${REALTIME_UPSTREAM:-host.docker.internal:8090}
+      WEB_UPSTREAM: ${WEB_UPSTREAM:-host.docker.internal:4200}
+    volumes:
+      - ./gateway/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Les certificats vivent ici. Sans ce volume, chaque redemarrage en
+      # redemanderait a Let's Encrypt, dont les quotas sont vite atteints.
+      - caddy-data:/data
+      - caddy-config:/config
+    extra_hosts:
+      # Necessaire sous Linux : host.docker.internal n'y existe pas
+      # nativement, contrairement a Docker Desktop.
+      - "host.docker.internal:host-gateway"
+
 volumes:
   mongo-data:
+  media-data:
+  caddy-data:
+  caddy-config:
